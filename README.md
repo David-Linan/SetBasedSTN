@@ -24,8 +24,8 @@ hexaly_benchmark_results/     # Folder containing output files (TXT, Excel) from
   - MInP(2)
   - MInLiP(2)
 - Compares each formulation in two modes:
-  - **Unknown-n**: number of task executions is decided by the solver
-  - **Known-n**: number of executions is fixed based on MIP output
+  - **Optional tasks (Unknown-n)**: number of task executions is decided by the solver
+  - **Fixed number of tasks (Known-n)**: number of executions is fixed based on MIP output
 - Evaluates performance across multiple discretization levels (`acc_level`)
 - Extracts metrics:
   - Objective value
@@ -33,8 +33,8 @@ hexaly_benchmark_results/     # Folder containing output files (TXT, Excel) from
   - Computation time
   - Solver status
 - Saves results to:
-  - `original.txt` and `known_n.txt` (tabular summaries)
-  - `original.xlsx` and `known_n.xlsx` (logs)
+  - `original.txt` and `known_n.txt` 
+  - `original.xlsx` and `known_n.xlsx`
   - `mip_n.xlsx` (execution counts from MIP)
 
 ---
