@@ -21,11 +21,11 @@ hexaly_benchmark_results/     # Folder containing output files (TXT, Excel) from
 ### `hexaly_benchmark.py`
 
 - Benchmarks five STN formulations:
-  - MIP
-  - MInP(1)
-  - MInLiP(1)
-  - MInP(2)
-  - MInLiP(2)
+  - MIP: Mixed Integer Problem
+  - MInP(1): Mixed Interval Problem (version 1)
+  - MInLiP(1): Mixed Interval-List Problem (version 1)
+  - MInP(2): Mixed Interval Problem (version 2)
+  - MInLiP(2): Mixed Interval-List Problem (version 2)
 - Compares each formulation in two modes:
   - **Optional tasks (Unknown-n)**: number of task executions is decided by the solver
   - **Fixed number of tasks (Known-n)**: number of executions is fixed based on MIP output
