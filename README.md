@@ -6,7 +6,9 @@ This repository provides a structured benchmarking framework for evaluating mult
 
 ## Repository Structure
 hexaly_benchmark.py           # Core benchmarking script: builds models, solves them, and logs 
+
 results hexaly_benchmark_plots.py     # Visualization script: generates plots from saved benchmarking results 
+
 hexaly_benchmark_results/     # Folder containing output files (TXT, Excel) from benchmarking runs
 
 ---
