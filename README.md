@@ -2,7 +2,7 @@
 
 This repository provides a structured benchmarking framework for evaluating multiple mathematical formulations of the State Task Network (STN) problem using the Hexaly optimization engine. It includes both model generation and performance analysis across varying time discretization levels.
 
-[View the full PDF report](Benchmarking STN Hexaly.pdf)
+[📄 View the full PDF report](Benchmarking%20STN%20Hexaly.pdf)
 
 
 ---
