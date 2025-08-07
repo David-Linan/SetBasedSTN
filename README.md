@@ -1,6 +1,6 @@
 # Hexaly Benchmarking for STN Formulations
 
-This repository provides a structured benchmarking framework for evaluating multiple mathematical formulations of the Short-Term Scheduling (STN) problem using the Hexaly optimization engine. It includes both model generation and performance analysis across varying time discretization levels.
+This repository provides a structured benchmarking framework for evaluating multiple mathematical formulations of the State Task Network (STN) problem using the Hexaly optimization engine. It includes both model generation and performance analysis across varying time discretization levels.
 
 ---
 
