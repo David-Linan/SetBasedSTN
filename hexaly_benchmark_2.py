@@ -1,9 +1,10 @@
 import math
-from hexaly.optimizer import HexalyOptimizer, HxInterval, HxParam,HxStatistics
+# from hexaly.optimizer import HexalyOptimizer, HxInterval, HxParam,HxStatistics
 from tabulate import tabulate
 import pandas as pd
 from pathlib import Path
-from hexaly_benchmark import minlip_1
+# from hexaly_benchmark import minlip_1
+import numpy as np
 
 # === Problem data ===
 
@@ -28,84 +29,197 @@ class Data:
         self.T = list(range(self.firstT, self.lastT + 1))  # Discrete time steps
         self.Tp = [t * self.delta for t in self.T]         # Physical time points
 
+
         # State-to-task consumption mapping
         self.I_i_k_minus = {
             ('P1','S1'):1,
-            ('T2','S3'):1, ('T2','S2'):1,
-            ('T3','S4'):1, ('T3','S5'):1,
-            ('T4','S6'):1, ('T4','S3'):1,
-            ('T5','S7'):1
+            ('P2','S1'):1,
+            ('P3','S1'):1,
+            ('P4','S1'):1,
+            ('P5','S1'):1,
+            ('P6','S1'):1,
+            ('P7','S1'):1,
+            ('P8','S1'):1,
+            ('P9','S1'):1,
+            ('P10','S1'):1,
+            ('P11','S1'):1,
+            ('P12','S1'):1,
+            ('P13','S1'):1,
+            ('P14','S1'):1,
+            ('P15','S1'):1,
         }
 
         # Task-to-state production mapping
         self.I_i_k_plus = {
-            ('T1','S4'):1,
-            ('T2','S5'):1,
-            ('T3','S6'):1, ('T3','S8'):1,
-            ('T4','S7'):1,
-            ('T5','S6'):1, ('T5','S9'):1
+            ('P1','S2'):1,
+            ('P2','S2'):1,
+            ('P3','S2'):1,
+            ('P4','S2'):1,
+            ('P5','S2'):1,
+            ('P6','S2'):1,
+            ('P7','S2'):1,
+            ('P8','S2'):1,
+            ('P9','S2'):1,
+            ('P10','S2'):1,
+            ('P11','S2'):1,
+            ('P12','S2'):1,
+            ('P13','S2'):1,
+            ('P14','S2'):1,
+            ('P15','S2'):1,
         }
 
         # Consumption coefficients
         self.rho_minus = {
-            ('T1','S1'):1,
-            ('T2','S3'):0.5, ('T2','S2'):0.5,
-            ('T3','S4'):0.4, ('T3','S5'):0.6,
-            ('T4','S6'):0.8, ('T4','S3'):0.2,
-            ('T5','S7'):1
+            ('P1','S1'):1,
+            ('P2','S1'):1,
+            ('P3','S1'):1,
+            ('P4','S1'):1,
+            ('P5','S1'):1,
+            ('P6','S1'):1,
+            ('P7','S1'):1,
+            ('P8','S1'):1,
+            ('P9','S1'):1,
+            ('P10','S1'):1,
+            ('P11','S1'):1,
+            ('P12','S1'):1,
+            ('P13','S1'):1,
+            ('P14','S1'):1,
+            ('P15','S1'):1,
         }
 
         # Production coefficients
         self.rho_plus = {
-            ('T1','S4'):1,
-            ('T2','S5'):1,
-            ('T3','S6'):0.6, ('T3','S8'):0.4,
-            ('T4','S7'):1,
-            ('T5','S6'):0.1, ('T5','S9'):0.9
+            ('P1','S2'):1,
+            ('P2','S2'):1,
+            ('P3','S2'):1,
+            ('P4','S2'):1,
+            ('P5','S2'):1,
+            ('P6','S2'):1,
+            ('P7','S2'):1,
+            ('P8','S2'):1,
+            ('P9','S2'):1,
+            ('P10','S2'):1,
+            ('P11','S2'):1,
+            ('P12','S2'):1,
+            ('P13','S2'):1,
+            ('P14','S2'):1,
+            ('P15','S2'):1,
         }
 
         # Task-unit assignment
-        self.I_i_j_prod = {
-            ('T1','U1'):1,
-            ('T2','U2'):1, ('T2','U3'):1,
-            ('T3','U2'):1, ('T3','U3'):1,
-            ('T4','U2'):1, ('T4','U3'):1,
-            ('T5','U4'):1
+        I_i_j_prod_partial = {
+            ('P1','C1'):1,
+            ('P2','C1'):1,
+            ('P3','C1'):1,
+            ('P4','C1'):1,
+            ('P5','C1'):1,
+            ('P6','C1'):1,
+            ('P7','C1'):1,
+            ('P8','C1'):1,
+            ('P9','C1'):1,
+            ('P10','C1'):1,
+            ('P11','C1'):1,
+            ('P12','C1'):1,
+            ('P13','C1'):1,
+            ('P14','C1'):1,
+            ('P15','C1'):1,
+
+            ('P1','C2'):1,
+            ('P2','C2'):1,
+            ('P3','C2'):1,
+            ('P4','C2'):1,
+            ('P5','C2'):1,
+            ('P6','C2'):1,
+            ('P7','C2'):1,
+            ('P8','C2'):1,
+            ('P9','C2'):1,
+            ('P10','C2'):1,
+            ('P11','C2'):1,
+            ('P12','C2'):1,
+            ('P13','C2'):1,
+            ('P14','C2'):1,
+            ('P15','C2'):1,
+
+            ('P1','C3'):1,
+            ('P2','C3'):1,
+            ('P3','C3'):1,
+            ('P4','C3'):1,
+            ('P5','C3'):1,
+            ('P6','C3'):1,
+            ('P7','C3'):1,
+            ('P8','C3'):1,
+            ('P9','C3'):1,
+            ('P10','C3'):1,
+            ('P11','C3'):1,
+            ('P12','C3'):1,
+            ('P13','C3'):1,
+            ('P14','C3'):1,
+            ('P15','C3'):1
         }
 
-        # Processing times (in hours)
-        self.tau_p = {
-            ('T1','U1'):0.5,
-            ('T2','U2'):0.5, ('T2','U3'):1.5,
-            ('T3','U2'):1.0, ('T3','U3'):2.5,
-            ('T4','U2'):1.0, ('T4','U3'):5.0,
-            ('T5','U4'):1.5
+        # Processing times
+        times={
+            'P1':3,
+            'P2':2,
+            'P3':4,
+            'P4':3,
+            'P5':2,
+            'P6':5,
+            'P7':3,
+            'P8':4,
+            'P9':2,
+            'P10':5,
+            'P11':3,
+            'P12':4,
+            'P13':3,
+            'P14':3,
+            'P15':2
         }
 
+        # Project sizes
+        size={
+            'P1':10,
+            'P2':15,
+            'P3':20,
+            'P4':12,
+            'P5':18,
+            'P6':25,
+            'P7':14,
+            'P8':22,
+            'P9':9,
+            'P10':29,
+            'P11':16,
+            'P12':27,
+            'P13':13,
+            'P14':21,
+            'P15':19
+        }
+
+        # chamber capacities
+        ch_capacity_lo ={'C1':5, 'C2':5, 'C3':5}
+        ch_capacity_up ={'C1':15, 'C2':25, 'C3':30}
+        
+
+        self.tau_p={}
+        self.I_i_j_prod={}
+        self.beta_min = {}
+        self.beta_max = {}
+
+        for key in I_i_j_prod_partial.keys():
+            for key_times in times.keys():
+                if key[0]==key_times and (size[key[0]]>=ch_capacity_lo[key[1]] and size[key[0]]<=ch_capacity_up[key[1]]):
+                    self.tau_p[key]=times[key_times]
+                    self.I_i_j_prod[key]=1
+                    self.beta_min[key]=size[key_times]
+                    self.beta_max[key]=size[key_times]
         # Processing times in time steps (rounded up)
         self.tau = {k: math.ceil(self.tau_p[k] / self.delta) for k in self.tau_p}
 
-        # Minimum and maximum batch sizes
-        self.beta_min = {
-            ('T1','U1'):10,
-            ('T2','U2'):10, ('T2','U3'):10,
-            ('T3','U2'):10, ('T3','U3'):10,
-            ('T4','U2'):10, ('T4','U3'):10,
-            ('T5','U4'):10
-        }
-
-        self.beta_max = {
-            ('T1','U1'):100,
-            ('T2','U2'):50, ('T2','U3'):80,
-            ('T3','U2'):50, ('T3','U3'):80,
-            ('T4','U2'):50, ('T4','U3'):80,
-            ('T5','U4'):200
-        }
 
         # Inventory bounds
+
         self.upper_s = {
-            'S1':4000, 'S2':4000, 'S3':4000, 'S4':1000, 'S5':150,
-            'S6':500, 'S7':1000, 'S8':4000, 'S9':4000
+            'S1':sum(size[i] for i in size.keys()), 'S2':sum(size[i] for i in size.keys())
         }
 
         self.lower_s = {k: 0 for k in self.K}  # All states have zero lower bound
@@ -115,21 +229,27 @@ class Data:
         self.replenishment = {(k,t): 0 for k in self.K for t in self.T}
 
         # Initial inventory levels
-        self.S0 = {k: 0 for k in self.K}
-        self.S0.update({'S1': 4000, 'S2': 4000, 'S3': 4000})  # Preloaded states
-
-        # Task-unit costs
-        self.cost = {
-            ('T1','U1'):10,
-            ('T2','U2'):15, ('T2','U3'):30,
-            ('T3','U2'):5,  ('T3','U3'):25,
-            ('T4','U2'):5,  ('T4','U3'):20,
-            ('T5','U4'):20
-        }
+        self.S0 = {'S1': sum(size[i] for i in size.keys()), 'S2': 0}
 
         # State revenues
-        self.revenue = {k: 0 for k in self.K}
-        self.revenue.update({'S8': 3, 'S9': 4})  # Only final products generate revenue
+        self.revenue = {
+            'P1':45,
+            'P2':10,
+            'P3':39,
+            'P4':67,
+            'P5':91,
+            'P6':10,
+            'P7':24,
+            'P8':17,
+            'P9':75,
+            'P10':61,
+            'P11':34,
+            'P12':43,
+            'P13':44,
+            'P14':26,
+            'P15':37
+        }
+
 
         # Execution bounds per task-unit pair
         self.upper_n = {
@@ -160,4 +280,5 @@ class Data:
         }     
 
 if __name__ == '__main__':
-    a=1
+    data=Data()
+    print(data.tau_p)
