@@ -1,15 +1,15 @@
 import math
-# from hexaly.optimizer import HexalyOptimizer, HxInterval, HxParam,HxStatistics
+from hexaly.optimizer import HexalyOptimizer, HxInterval, HxParam,HxStatistics
 from tabulate import tabulate
 import pandas as pd
 from pathlib import Path
-# from hexaly_benchmark import minlip_1
 import numpy as np
-
+from base_formulations import base_mip,base_minp_1,base_minlip_1,base_minp_2,base_minlip_2
+from hexaly_benchmark import flush_table_to_txt,write_to_excel
 # === Problem data ===
 
 class Data:
-    def __init__(self, eta_f=6.0, delta_f=1.0, acc_level=1):
+    def __init__(self, eta_f=18.0, delta_f=1.0, acc_level=1):
         # Scheduling horizon and time discretization parameters
         self.eta_f = eta_f                  # Total scheduling horizon (e.g., in hours)
         self.delta_f = delta_f              # Base time step
@@ -253,7 +253,7 @@ class Data:
 
         # Execution bounds per task-unit pair
         self.upper_n = {
-            (i,j): math.floor(self.lastT / self.tau[(i,j)])
+            (i,j): 1
             for (i,j) in self.I_i_j_prod
         }
 
@@ -279,6 +279,176 @@ class Data:
             for (i,j) in self.I_i_j_prod
         }     
 
+
+# === General STN formualtions (with optional tasks) ===
+        
+def mip(optimizer,data):
+
+    m, x, s, b=base_mip(optimizer,data)
+
+
+    # Constraint: task execution constraint: each task must be assigned to at most one unit 
+    for i in data.I:
+        m.constraint(m.sum(m.sum(x[i,j,t] for t in data.T)  for j in data.J if (i,j) in data.I_i_j_prod    ) <= 1)
+
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    for (i,j) in data.I_i_j_prod:
+        for t in (tt for tt in data.T if tt> data.lastT-data.tau[(i,j)]+1):
+            m.constraint(x[i,j,t]==0)
+
+    # Objective
+    # Maximize revenue
+    revenue = m.sum(data.revenue[i]*m.sum(x[i,j,t] for t in data.T) for (i, j) in data.I_i_j_prod)
+    
+    m.minimize(-revenue)
+
+    return m, x, s, b
+
+def minp_1(optimizer,data):
+
+    m, interv, s, b=base_minp_1(optimizer,data)
+
+    # Constraint: task execution constraint: each task must be assigned to at most one unit 
+    for i in data.I:
+        m.constraint(m.sum(m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])  for j in data.J if (i,j) in data.I_i_j_prod    ) <= 1)   
+
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
+
+    # Objective
+    # Maximize revenue
+    revenue=m.sum(data.revenue[i]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
+
+    m.minimize(-revenue)
+
+    return m, interv, s, b
+
+def minlip_1(optimizer,data):
+
+    m, interv, s, b =base_minlip_1(optimizer,data)
+
+    # Constraint: task execution constraint: each task must be assigned to at most one unit 
+    for i in data.I:
+        m.constraint(m.sum(m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])  for j in data.J if (i,j) in data.I_i_j_prod    ) <= 1)   
+
+  
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
+
+    # Objective
+    # Maximize revenue
+    revenue=m.sum(data.revenue[i]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
+
+    m.minimize(-revenue)
+
+    return m, interv, s, b
+
+def minp_2(optimizer,data):
+
+    m, interv, s, b=base_minp_2(optimizer,data)
+
+    # Constraint: task execution constraint: each task must be assigned to at most one unit 
+    for i in data.I:
+        m.constraint(m.sum(m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])  for j in data.J if (i,j) in data.I_i_j_prod    ) <= 1)   
+
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
+
+    # Objective
+    # Maximize revenue
+    revenue=m.sum(data.revenue[i]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
+
+    m.minimize(-revenue)
+
+    return m, interv, s, b
+
+def minlip_2(optimizer,data):
+
+    m, interv, s, b=base_minlip_2(optimizer,data)
+
+    # Constraint: task execution constraint: each task must be assigned to at most one unit 
+    for i in data.I:
+        m.constraint(m.sum(m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])  for j in data.J if (i,j) in data.I_i_j_prod    ) <= 1)   
+
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
+
+    # Objective
+    # Maximize revenue
+    revenue=m.sum(data.revenue[i]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
+
+    m.minimize(-revenue)
+
+    return m, interv, s, b
+
+
+
+
+
 if __name__ == '__main__':
-    data=Data()
-    print(data.tau_p)
+    # ------------------------
+    # Benchmarking Parameters
+    # ------------------------
+    delta_f = 1         # Base time step (in time units)
+    time_limit = 300    # Time limit for optimization (in seconds)
+    seed = 1            # Random seed for reproducibility
+
+    # ------------------------
+    # Formulation Dictionaries
+    # ------------------------
+    # Each key corresponds to a formulation variant
+    unknown_n_formulations = {
+        1: mip,
+        2: minp_1,
+        3: minlip_1,
+        4: minp_2,
+        5: minlip_2
+    }
+
+    # ------------------------
+    # Result Containers
+    # ------------------------
+    original_results = {}     # Stores raw results for unknown-n formulations
+    original_table = {}       # Tabular format for unknown-n results
+
+    # ------------------------
+    # Benchmarking Loop
+    # ------------------------
+    time_horizons=range(6,18+1)
+
+    for eta_f in time_horizons:
+        # Run all unknown-n formulations
+        for key, formulation in unknown_n_formulations.items():
+            data = Data(eta_f=eta_f, delta_f=delta_f, acc_level=1)
+            with HexalyOptimizer() as optimizer:
+                # Build and solve model
+                m, x, s, b = formulation(optimizer, data)
+                m.close()
+                optimizer.param.time_limit = time_limit
+                optimizer.param.seed = seed
+                optimizer.solve()
+
+                # Extract solution metrics
+                objective = optimizer.solution.get_value(m.objectives[0])
+                objective_bound = optimizer.solution.get_objective_bound(0)
+                objective_gap = optimizer.solution.get_objective_gap(0) * 100
+                comp_time = optimizer.statistics.get_running_time()
+                status = str(optimizer.solution.status)
+
+                # Store results
+                original_results.setdefault(key, []).append([
+                    eta_f, objective, objective_bound, objective_gap, comp_time, status
+                ])
+                original_table.setdefault(eta_f, {})[key] = [
+                    objective, objective_bound, objective_gap, comp_time, status
+                ]
+
+        # ------------------------
+        # Save Intermediate Tables
+        # ------------------------
+        flush_table_to_txt("original_2.txt", original_table, list(unknown_n_formulations.keys()))
+
+    # ------------------------
+    # Save Final Results
+    # ------------------------
+    write_to_excel("original_2.xlsx", original_results)
