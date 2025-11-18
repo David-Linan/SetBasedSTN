@@ -169,7 +169,8 @@ def base_minlip_1(optimizer,data):
 
     for j in data.J:
         # Arrays for unit j: intervals, durations, batch sizes, and bounds
-        interv_array = m.array([interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]])
+        interv_array_list=[interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]]
+        interv_array = m.array(interv_array_list)
         tau_array = m.array([data.tau[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
         b_array = m.array([b[i,j,q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]])
         b_min_array = m.array([data.beta_min[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
@@ -182,7 +183,7 @@ def base_minlip_1(optimizer,data):
         )
         m.constraint(m.and_(m.range(1, m.count(order[j])), f_one_task_at_a_time))
 
-        for pos in range(m.count(interv_array)):
+        for pos in range(len(interv_array_list)):
             # Constraint: interval length
             # Ensures that interval length is zero if task is not in the list, or tau if it is
             m.constraint( m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos])
@@ -357,7 +358,8 @@ def base_minlip_2(optimizer,data):
 
 
     for j in data.J:
-        interv_array = m.array([interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]])
+        interv_array_list=[interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]]
+        interv_array = m.array(interv_array_list)
         tau_array = m.array([data.tau[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
 
         # Constraint: non-overlapping
@@ -367,7 +369,7 @@ def base_minlip_2(optimizer,data):
         )
         m.constraint(m.and_(m.range(1, m.count(order[j])), f_one_task_at_a_time))
 
-        for pos in range(m.count(interv_array)):
+        for pos in range(len(interv_array_list)):
             # Constraint: interval length
             # Ensures that interval length is zero if task is not in the list, or tau if it is
             m.constraint( m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos])
@@ -1036,7 +1038,8 @@ def base_minlip_1_variable_time(optimizer,data):
 
     for j in data.J:
         # Arrays for unit j: intervals, durations, batch sizes, and bounds
-        interv_array = m.array([interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]])
+        interv_array_list=[interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]]
+        interv_array = m.array(interv_array_list)
         tau_array = m.array([tau[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
         b_array = m.array([b[i,j,q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]])
         b_min_array = m.array([data.beta_min[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
@@ -1049,7 +1052,7 @@ def base_minlip_1_variable_time(optimizer,data):
         )
         m.constraint(m.and_(m.range(1, m.count(order[j])), f_one_task_at_a_time))
 
-        for pos in range(m.count(interv_array)):
+        for pos in range(len(interv_array_list)):
             # Constraint: interval length
             # Ensures that interval length is zero if task is not in the list, or tau if it is
             m.constraint( m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos])
@@ -1332,7 +1335,8 @@ def base_minlip_2_variable_time(optimizer,data):
 
 
     for j in data.J:
-        interv_array = m.array([interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]])
+        interv_array_list=[interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]]
+        interv_array = m.array(interv_array_list)
         tau_array = m.array([tau[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
 
         # Constraint: non-overlapping
@@ -1342,7 +1346,7 @@ def base_minlip_2_variable_time(optimizer,data):
         )
         m.constraint(m.and_(m.range(1, m.count(order[j])), f_one_task_at_a_time))
 
-        for pos in range(m.count(interv_array)):
+        for pos in range(len(interv_array_list)):
             # Constraint: interval length
             # Ensures that interval length is zero if task is not in the list, or tau if it is
             m.constraint( m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos])
