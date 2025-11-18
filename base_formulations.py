@@ -836,3 +836,82 @@ def base_minlip_2_known_n(optimizer,data,n):
 
 
     return m, interv, s, b
+
+
+# === General STN formulations with variable processing times ===
+def base_mip_variable_time(optimizer,data):
+    # Declare the optimization model
+    m = optimizer.model
+
+    # Variable: timing
+    # x[i,j,t] is a binary variable indicating whether task i on unit j starts at time t
+    x = {(i,j,t):m.bool() for (i, j) in data.I_i_j_prod for t in data.T}
+
+    # Variable: amount
+    # b[i,j,t] is the amount processed by task i on unit j at time t, bounded by beta_max
+    b = {(i, j, t): m.float(0, data.beta_max[(i, j)]) for (i, j) in data.I_i_j_prod for t in data.T}
+    
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Variable: processing time
+    # tau[i,j] is the processing time of task i in unit j
+    # data.tau_max: the maximum processing time wrt. the discrete time grid
+    tau = {(i,j): m.int(0,data.tau_max[(i,j)]) for (i, j) in data.I_i_j_prod}
+
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Constraint: Linear relationship between tau and b
+    for (i,j) in data.I_i_j_prod:
+        for t in data.T:
+            m.constraint(tau[i,j] >= (data.tau_max[(i,j)]/data.beta_max[(i, j)])*b[i,j,t])                
+
+    # Constraint: Non-overlapping
+    # Ensures that at most one task is active on unit j at any time t
+    for j in data.J:
+        f_one_task_at_a_time = m.lambda_function(
+            lambda t: m.sum(
+                m.sum(
+                    m.iif(m.and_(t_aux <= t, t_aux >= t - tau[i,j] + 1), x[i,j,t_aux], 0)
+                    for t_aux in data.T
+                )
+                for i in data.I if (i, j) in data.I_i_j_prod
+            ) <= 1
+        )
+        m.constraint(m.and_(m.array(data.T), f_one_task_at_a_time))
+
+    # Constraint: task-unit capacity
+    # Enforces that if task i is active at time t on unit j, the processed amount b[i,j,t]
+    # must lie within [beta_min, beta_max] bounds
+    for (i,j) in data.I_i_j_prod:
+        for t in data.T:
+            m.constraint(data.beta_min[i,j]*x[i,j,t] <= b[i,j,t])
+            m.constraint(data.beta_max[i,j]*x[i,j,t] >= b[i,j,t])
+
+    s = {}
+    for k, t in ((k, t) for k in data.K for t in data.T):
+        # Expressions: storage state
+        # Computes inventory level s[k,t] for material k at time t
+        if t == data.firstT:
+            # Initial inventory
+            s[k,t] = data.S0[k] \
+                - m.sum(data.rho_minus[i,k]*b[i,j,t]
+                       for i, j in ((i, j) for (i, j) in data.I_i_j_prod if (i,k) in data.I_i_k_minus)) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+        else:
+            # Inventory update
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Since tau[i,j] is variable, a conditional sum is needed to take the correct b_i,j,t-tau in the balance
+            s[k,t] = s[k,t-1] \
+                + m.sum(data.rho_plus[i,k]*(m.sum( m.iif(tau_partial==tau[i,j],b[i,j,t-tau_partial],0)      for tau_partial in range(0,data.tau_max[(i,j)]+1) if t-tau_partial>=data.firstT  ))
+                       for i, j in ((i, j) for (i, j) in data.I_i_j_prod if (i,k) in data.I_i_k_plus)) \
+                - m.sum(data.rho_minus[i,k]*b[i,j,t]
+                       for i, j in ((i, j) for (i, j) in data.I_i_j_prod if (i,k) in data.I_i_k_minus)) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+        
+
+        # Constraints: state tracking
+        # Keeps inventory within specified bounds
+        m.constraint(s[k,t] <= data.upper_s[k])   
+        m.constraint(s[k,t] >= data.lower_s[k])      
+
+    return m, x, s, b

@@ -5,7 +5,6 @@ import pandas as pd
 from pathlib import Path
 import numpy as np
 from base_formulations import base_mip,base_minp_1,base_minlip_1,base_minp_2,base_minlip_2
-from hexaly_benchmark import flush_table_to_txt,write_to_excel
 # === Problem data ===
 
 class Data:
@@ -279,6 +278,53 @@ class Data:
             for (i,j) in self.I_i_j_prod
         }     
 
+# === Helpers ===
+
+def flush_table_to_txt(filename, table_by_acc, formulation_keys):
+    from pathlib import Path
+
+    output_path = Path("./hexaly_benchmarking_results")
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    metrics = ["Obj", "Bound", "Gap%", "Time", "Status"]
+    col_width = 12
+    col_width_status = 30  # Wider column for status
+
+    def format_cell(val, is_status=False):
+        width = col_width_status if is_status else col_width
+        if isinstance(val, float):
+            return f"{val:.2f}".ljust(width)
+        return str(val).ljust(width)
+
+    with open(output_path / filename, "w") as f:
+        headers = ["Time horizon".ljust(col_width)]
+        for key in formulation_keys:
+            headers.extend([
+                f"F{key}_Obj".ljust(col_width),
+                f"F{key}_Bound".ljust(col_width),
+                f"F{key}_Gap%".ljust(col_width),
+                f"F{key}_Time".ljust(col_width),
+                f"F{key}_Status".ljust(col_width_status),
+            ])
+        f.write(" | ".join(headers) + "\n")
+        f.write("-" * len(" | ".join(headers)) + "\n")
+
+        for acc in sorted(table_by_acc):
+            row = [str(acc).ljust(col_width)]
+            for key in formulation_keys:
+                vals = table_by_acc[acc].get(key, ["-", "-", "-", "-", "-"])
+                for i, val in enumerate(vals):
+                    row.append(format_cell(val, is_status=(i == 4)))
+            f.write(" | ".join(row) + "\n")
+
+def write_to_excel(filename, results_dict):
+    output_path = Path("./hexaly_benchmarking_results")
+    writer = pd.ExcelWriter(output_path / filename, engine='xlsxwriter')
+    for key, records in results_dict.items():
+        df = pd.DataFrame(records, columns=["Time horizon", "Objective", "Obj. bound", "Obj. gap", "Time [s]", "Status"])
+        df.to_excel(writer, sheet_name=f"Formulation_{key}", index=False)
+    writer.close()
+
 
 # === General STN formualtions (with optional tasks) ===
         
@@ -293,7 +339,7 @@ def mip(optimizer,data):
 
     # Constraint: time horizon constraint: projects must complete within the scheduling period
     for (i,j) in data.I_i_j_prod:
-        for t in (tt for tt in data.T if tt> data.lastT-data.tau[(i,j)]+1):
+        for t in (tt for tt in data.T if tt>= data.lastT-data.tau[(i,j)]+1):
             m.constraint(x[i,j,t]==0)
 
     # Objective
@@ -380,10 +426,6 @@ def minlip_2(optimizer,data):
     m.minimize(-revenue)
 
     return m, interv, s, b
-
-
-
-
 
 if __name__ == '__main__':
     # ------------------------
