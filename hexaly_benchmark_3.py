@@ -5,7 +5,7 @@ from tabulate import tabulate
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from base_formulations import base_mip,base_minp_1,base_minlip_1,base_minp_2,base_minlip_2,base_mip_known_n,base_minp_1_known_n,base_minlip_1_known_n,base_minp_2_known_n,base_minlip_2_known_n
+from base_formulations import base_mip_variable_time,base_minp_1_variable_time,base_minp_1_variable_time_different_times_relaxation,base_minlip_1_variable_time,base_minp_2_variable_time,base_minlip_2_variable_time
 
 # === Problem data ===
 class Data:
@@ -73,9 +73,10 @@ class Data:
             ('T4','U2'):1, ('T4','U3'):1,
             ('T5','U4'):1
         }
-
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+# This is now the maximum processing time
         # Processing times (in hours)
-        self.tau_p = {
+        self.tau_p_max = {
             ('T1','U1'):0.5,
             ('T2','U2'):0.5, ('T2','U3'):1.5,
             ('T3','U2'):1.0, ('T3','U3'):2.5,
@@ -84,7 +85,7 @@ class Data:
         }
 
         # Processing times in time steps (rounded up)
-        self.tau = {k: math.ceil(self.tau_p[k] / self.delta) for k in self.tau_p}
+        self.tau_max = {k: math.ceil(self.tau_p_max[k] / self.delta) for k in self.tau_p_max}
 
         # Minimum and maximum batch sizes
         self.beta_min = {
@@ -133,8 +134,10 @@ class Data:
         self.revenue.update({'S8': 3, 'S9': 4})  # Only final products generate revenue
 
         # Execution bounds per task-unit pair
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+# Since processing time is variable, the maximum number of tims a task can be executed is also the number of time points
         self.upper_n = {
-            (i,j): math.floor(self.lastT / self.tau[(i,j)])
+            (i,j): math.floor(self.lastT / 1)
             for (i,j) in self.I_i_j_prod
         }
 
@@ -164,7 +167,7 @@ class Data:
         
 def mip(optimizer,data):
 
-    m, x, s, b=base_mip(optimizer,data)
+    m, x, s, b=base_mip_variable_time(optimizer,data)
 
     # Objective
     # Maximize profit: final inventory value minus total task costs
@@ -176,7 +179,21 @@ def mip(optimizer,data):
 
 def minp_1(optimizer,data):
 
-    m, interv, s, b=base_minp_1(optimizer,data)
+    m, interv, s, b=base_minp_1_variable_time(optimizer,data)
+
+    # Objective
+    # Maximize profit: final inventory value minus total task costs
+    # Task cost is counted only for active realizations (length > 0)
+    profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
+           - m.sum(data.cost[i,j]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])
+                   for (i, j) in data.I_i_j_prod)
+    m.minimize(-profit)
+
+    return m, interv, s, b
+
+def minp_1_relaxation(optimizer,data):
+
+    m, interv, s, b=base_minp_1_variable_time_different_times_relaxation(optimizer,data)
 
     # Objective
     # Maximize profit: final inventory value minus total task costs
@@ -190,7 +207,7 @@ def minp_1(optimizer,data):
 
 def minlip_1(optimizer,data):
 
-    m, interv, s, b=base_minlip_1(optimizer,data)
+    m, interv, s, b=base_minlip_1_variable_time(optimizer,data)
 
     # Objective
     # Maximize profit: final inventory value minus total task costs
@@ -204,7 +221,7 @@ def minlip_1(optimizer,data):
 
 def minp_2(optimizer,data):
 
-    m, interv, s, b=base_minp_2(optimizer,data)
+    m, interv, s, b=base_minp_2_variable_time(optimizer,data)
 
     # Objective
     # Maximize profit: final inventory value minus total task costs
@@ -218,75 +235,13 @@ def minp_2(optimizer,data):
 
 def minlip_2(optimizer,data):
 
-    m, interv, s, b=base_minlip_2(optimizer,data)
+    m, interv, s, b=base_minlip_2_variable_time(optimizer,data)
 
     # Objective
     # As in MInP(2): maximize profit as final inventory value minus cost of active tasks
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
            - m.sum(data.cost[i,j]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])
                    for (i, j) in data.I_i_j_prod)
-    m.minimize(-profit)
-
-    return m, interv, s, b
-
-# === Simplified STN formualtions (without optional tasks) ===
-
-def mip_known_n(optimizer,data,n):
-
-    m, x, s, b=base_mip_known_n(optimizer,data,n)
-
-    # Objective
-    # Opposite to MIP: cost is computed using fixed number of executions n[i,j] instead of summing over x[i,j,t]
-    profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*n[i,j] for (i, j) in data.I_i_j_prod)
-    m.minimize(-profit)
-
-    return m, x, s, b
-
-def minp_1_known_n(optimizer,data,n):
-
-    m, interv, s, b=base_minp_1_known_n(optimizer,data,n)
-
-    # Objective
-    # Opposite to MInP(1): cost is computed using fixed number of realizations rather than checking interval length
-    profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*m.sum(1 for _ in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
-    m.minimize(-profit)
-
-    return m, interv, s, b
-
-def minlip_1_known_n(optimizer,data,n):
- 
-    m, interv, s, b=base_minlip_1_known_n(optimizer,data,n)
-
-    # Objective
-    # Opposite to MInLiP(1): cost is computed using fixed number of realizations rather than checking interval length
-    profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*m.sum(1 for _ in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
-    m.minimize(-profit)
-
-    return m, interv, s, b
-
-def minp_2_known_n(optimizer,data,n):
-
-    m, interv, s, b=base_minp_2_known_n(optimizer,data,n)
-
-    # Objective
-    # Opposite to MInP(2): cost is computed using fixed number of realizations rather than checking interval length
-    profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*m.sum(1 for _ in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
-    m.minimize(-profit)
-
-    return m, interv, s, b
-
-def minlip_2_known_n(optimizer,data,n):
-
-    m, interv, s, b=base_minlip_2_known_n(optimizer,data,n)
-
-    # Objective
-    # Opposite to MInLiP(2): cost is computed using fixed number of realizations rather than checking interval length
-    profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*m.sum(1 for _ in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
     m.minimize(-profit)
 
     return m, interv, s, b
@@ -400,24 +355,13 @@ def write_to_excel(filename, results_dict):
         df.to_excel(writer, sheet_name=f"Formulation_{key}", index=False)
     writer.close()
 
-def write_mip_n_excel(n_mip, data):
-    output_path = Path("./hexaly_benchmarking_results")
-    records = []
-    for acc in n_mip:
-        row = {"acc": acc}
-        for (i, j) in data.I_i_j_prod:
-            row[f"{i}_{j}"] = n_mip[acc][i,j]
-        records.append(row)
-    df = pd.DataFrame(records)
-    df.to_excel(output_path / "mip_n.xlsx", index=False)
-
 # === Main Benchmark Loop ===
 if __name__ == '__main__':
     # ------------------------
     # Benchmarking Parameters
     # ------------------------
-    eta_f = 120         # Scheduling horizon (in time units)
-    delta_f = 1         # Base time step (in time units)
+    eta_f = 5         # Scheduling horizon (in time units)
+    delta_f = 0.05         # Base time step (in time units)
     time_limit = 300    # Time limit for optimization (in seconds)
     seed = 1            # Random seed for reproducibility
 
@@ -436,16 +380,10 @@ if __name__ == '__main__':
         2: minp_1,
         3: minlip_1,
         4: minp_2,
-        5: minlip_2
+        5: minlip_2,
+        6: minp_1_relaxation
     }
 
-    known_n_formulations = {
-        1: mip_known_n,
-        2: minp_1_known_n,
-        3: minlip_1_known_n,
-        4: minp_2_known_n,
-        5: minlip_2_known_n
-    }
 
     # ------------------------
     # Result Containers
@@ -487,52 +425,13 @@ if __name__ == '__main__':
                     objective, objective_bound, objective_gap, comp_time, status
                 ]
 
-                # Extract execution counts from MIP solution
-                if key == 1:
-                    n_mip[acc] = {
-                        (i, j): sum(round(x[i, j, t].value) for t in data.T)
-                        for (i, j) in data.I_i_j_prod
-                    }
-
-        # Run all known-n formulations using extracted n from MIP
-        for key, formulation in known_n_formulations.items():
-            data = Data(eta_f=eta_f, delta_f=delta_f, acc_level=acc)
-            with HexalyOptimizer() as optimizer:
-                m, x, s, b = formulation(optimizer, data, n_mip[acc])
-                m.close()
-                optimizer.param.time_limit = time_limit
-                optimizer.param.seed = seed
-                optimizer.solve()
-
-                # Extract solution metrics
-                objective = optimizer.solution.get_value(m.objectives[0])
-                objective_bound = optimizer.solution.get_objective_bound(0)
-                objective_gap = optimizer.solution.get_objective_gap(0) * 100
-                comp_time = optimizer.statistics.get_running_time()
-                status = str(optimizer.solution.status)
-
-                # Store results
-                known_n_results.setdefault(key, []).append([
-                    acc, objective, objective_bound, objective_gap, comp_time, status
-                ])
-                known_table.setdefault(acc, {})[key] = [
-                    objective, objective_bound, objective_gap, comp_time, status
-                ]
 
         # ------------------------
         # Save Intermediate Tables
         # ------------------------
-        flush_table_to_txt("original.txt", original_table, list(unknown_n_formulations.keys()))
-        flush_table_to_txt("known_n.txt", known_table, list(known_n_formulations.keys()))
+        flush_table_to_txt("original_3.txt", original_table, list(unknown_n_formulations.keys()))
 
     # ------------------------
     # Save Final Results
     # ------------------------
-    write_to_excel("original.xlsx", original_results)
-    write_to_excel("known_n.xlsx", known_n_results)
-
-    # Save extracted execution counts from MIP
-    write_mip_n_excel(n_mip, data)
-
-    # Print extracted n values for inspection
-    print(n_mip)
+    write_to_excel("original_3.xlsx", original_results)

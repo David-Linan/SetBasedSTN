@@ -456,7 +456,7 @@ if __name__ == '__main__':
     # ------------------------
     # Benchmarking Loop
     # ------------------------
-    time_horizons=range(6,18+1)
+    time_horizons=range(5,17+1)
 
     for eta_f in time_horizons:
         # Run all unknown-n formulations

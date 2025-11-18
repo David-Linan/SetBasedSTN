@@ -1,3 +1,4 @@
+import math
 # === General STN formualtions (with optional tasks) ===
         
 def base_mip(optimizer,data):
@@ -181,24 +182,16 @@ def base_minlip_1(optimizer,data):
         )
         m.constraint(m.and_(m.range(1, m.count(order[j])), f_one_task_at_a_time))
 
-        # Constraint: interval length
-        # Ensures that interval length is zero if task is not in the list, or tau if it is
-        f_non_zero_interval_length = m.lambda_function(
-            lambda pos: m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos]
-        )
-        m.constraint(m.and_(m.range(0, m.count(interv_array)), f_non_zero_interval_length))
+        for pos in range(m.count(interv_array)):
+            # Constraint: interval length
+            # Ensures that interval length is zero if task is not in the list, or tau if it is
+            m.constraint( m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos])
 
-        # Constraint: task-unit capacity (lower bound)
-        f_min_b = m.lambda_function(
-            lambda pos: b_array[pos] >= m.contains(order[j], pos) * b_min_array[pos]
-        )
-        m.constraint(m.and_(m.range(0, m.count(b_array)), f_min_b))
+            # Constraint: task-unit capacity (lower bound)
+            m.constraint( b_array[pos] >= m.contains(order[j], pos) * b_min_array[pos] )
 
-        # Constraint: task-unit capacity (upper bound)
-        f_max_b = m.lambda_function(
-            lambda pos: b_array[pos] <= m.contains(order[j], pos) * b_max_array[pos]
-        )
-        m.constraint(m.and_(m.range(0, m.count(b_array)), f_max_b))
+            # Constraint: task-unit capacity (upper bound)
+            m.constraint( b_array[pos] <= m.contains(order[j], pos) * b_max_array[pos] ) 
 
 
     s = {}
@@ -374,12 +367,12 @@ def base_minlip_2(optimizer,data):
         )
         m.constraint(m.and_(m.range(1, m.count(order[j])), f_one_task_at_a_time))
 
-        # Constraint: interval activation
-        # Opposite to MInP(2): interval length is tied to list membership
-        f_non_zero_interval_length = m.lambda_function(
-            lambda pos: m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos]
-        )
-        m.constraint(m.and_(m.range(0, m.count(interv_array)), f_non_zero_interval_length))
+        for pos in range(m.count(interv_array)):
+            # Constraint: interval length
+            # Ensures that interval length is zero if task is not in the list, or tau if it is
+            m.constraint( m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos])
+            # Opposite to MInP(2): interval length is tied to list membership
+
 
 
     s = {}
@@ -915,3 +908,477 @@ def base_mip_variable_time(optimizer,data):
         m.constraint(s[k,t] >= data.lower_s[k])      
 
     return m, x, s, b
+
+def base_minp_1_variable_time(optimizer,data):
+    #
+    # Declare the optimization model
+    #
+    m = optimizer.model
+
+    # Variable: timing
+    # interv[i,j,q] is an interval variable representing the execution window of realization q of task i on unit j
+    # Unlike MIP, timing is modeled directly as intervals rather than binary start indicators
+    interv = {(i, j, q): m.interval(data.firstT, data.lastT) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]}
+
+    # Variable: amount
+    # b[i,j,q] is the amount processed by realization q of task i on unit j
+    # Unlike MIP, these are defined per interval rather than per time step
+    b = {(i, j, q): m.float(0, data.beta_max[(i, j)]) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]}
+
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Variable: processing time
+    # tau[i,j] is the processing time of task i in unit j
+    # data.tau_max: the maximum processing time wrt. the discrete time grid
+    tau = {(i,j): m.int(0,data.tau_max[(i,j)]) for (i, j) in data.I_i_j_prod}
+
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Constraint: Linear relationship between tau and b
+    for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]):
+        m.constraint(tau[i,j] >= (data.tau_max[(i,j)]/data.beta_max[(i, j)])*b[i,j,q]) 
+
+    # Constraint: task-unit capacity
+    # Enforces that each realization is either active with fixed duration and bounded batch size,
+    # or inactive with zero duration and zero batch size
+    for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]):
+        m.constraint(
+            m.or_(
+                # Active realization: fixed duration and batch size within bounds
+                m.and_(
+                    m.eq(m.length(interv[(i, j, q)]), tau[(i, j)]),
+                    m.geq(b[i,j,q], data.beta_min[i,j]),
+                    m.leq(b[i,j,q], data.beta_max[i,j])
+                ),
+                # Inactive realization: zero duration and zero batch size
+                m.and_(
+                    m.eq(m.length(interv[(i, j, q)]), 0),
+                    m.eq(b[i,j,q], 0)
+                )
+            )
+        )
+
+    # Constraint: Non-overlapping
+    # Ensures that at most one task is active on unit j at any time t
+    # Expressed directly using interval boundaries, without auxiliary list variables
+    for j in data.J:
+        f_one_task_at_a_time = m.lambda_function(
+            lambda t: m.sum(
+                m.geq(t, m.start(interv[i,j,q])) - m.geq(t, m.end(interv[i,j,q]))
+                for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[i,j]
+            ) <= 1
+        )
+        m.constraint(m.and_(m.array(data.T), f_one_task_at_a_time))
+
+
+    s = {}
+    for k, t in ((k, t) for k in data.K for t in data.T):
+        # Expressions: storage state
+        # Computes inventory level s[k,t] for material k at time t
+        # Unlike MIP, these have been modified considering that b[i,j,q] is indexed over q (realization) rather than time
+        if t == data.firstT: # Initial inventory
+            s[k,t] = data.S0[k] \
+                - m.sum(m.iif(m.eq(t, m.start(interv[i,j,q])), data.rho_minus[i,k]*b[i,j,q], 0)
+                        for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod
+                                        if (i,k) in data.I_i_k_minus for q in data.Q[(i, j)])) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+
+        else: # Inventory update
+            s[k,t] = s[k,t-1] \
+                + m.sum(m.iif(m.eq(t, m.end(interv[i,j,q])), data.rho_plus[i,k]*b[i,j,q], 0)
+                        for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod
+                                        if (i,k) in data.I_i_k_plus for q in data.Q[(i, j)])) \
+                - m.sum(m.iif(m.eq(t, m.start(interv[i,j,q])), data.rho_minus[i,k]*b[i,j,q], 0)
+                        for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod
+                                        if (i,k) in data.I_i_k_minus for q in data.Q[(i, j)])) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+
+        # Constraints: state tracking
+        # Keeps inventory within specified bounds
+        m.constraint(s[k,t] <= data.upper_s[k])   
+        m.constraint(s[k,t] >= data.lower_s[k])  
+
+
+    return m, interv, s, b
+
+def base_minlip_1_variable_time(optimizer,data):
+    #
+    # Declare the optimization model
+    #
+    m = optimizer.model
+
+    # Variable: timing
+    # interv[i,j,q] is an interval variable representing the execution window of realization q of task i on unit j
+    # As in MInP(1), timing is modeled directly as intervals
+    interv = {(i, j, q): m.interval(data.firstT, data.lastT) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]}
+
+    # Variable: amount
+    # b[i,j,q] is the amount processed by realization q of task i on unit j
+    # As in MInP(1), these are defined per interval rather than per time step
+    b = {(i, j, q): m.float(0, data.beta_max[(i, j)]) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]}
+
+    # Variable: list
+    # order[j] is a list variable representing the sequence of active tasks on unit j
+    # Unlike MInP(1), list variables are introduced to model optional tasks and sequencing
+    order = {j: m.list(sum(data.upper_n[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod)) for j in data.J}
+
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Variable: processing time
+    # tau[i,j] is the processing time of task i in unit j
+    # data.tau_max: the maximum processing time wrt. the discrete time grid
+    tau = {(i,j): m.int(0,data.tau_max[(i,j)]) for (i, j) in data.I_i_j_prod}
+
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Constraint: Linear relationship between tau and b
+    for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]):
+        m.constraint(tau[i,j] >= (data.tau_max[(i,j)]/data.beta_max[(i, j)])*b[i,j,q]) 
+
+
+    for j in data.J:
+        # Arrays for unit j: intervals, durations, batch sizes, and bounds
+        interv_array = m.array([interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]])
+        tau_array = m.array([tau[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
+        b_array = m.array([b[i,j,q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]])
+        b_min_array = m.array([data.beta_min[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
+        b_max_array = m.array([data.beta_min[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
+
+        # Constraint: Non-overlapping
+        # Ensures that tasks in the list are sequenced without overlap
+        f_one_task_at_a_time = m.lambda_function(
+            lambda pos: interv_array[order[j][pos-1]] < interv_array[order[j][pos]]
+        )
+        m.constraint(m.and_(m.range(1, m.count(order[j])), f_one_task_at_a_time))
+
+        for pos in range(m.count(interv_array)):
+            # Constraint: interval length
+            # Ensures that interval length is zero if task is not in the list, or tau if it is
+            m.constraint( m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos])
+
+            # Constraint: task-unit capacity (lower bound)
+            m.constraint( b_array[pos] >= m.contains(order[j], pos) * b_min_array[pos] )
+
+            # Constraint: task-unit capacity (upper bound)
+            m.constraint( b_array[pos] <= m.contains(order[j], pos) * b_max_array[pos] ) 
+
+
+    s = {}
+    for k, t in ((k, t) for k in data.K for t in data.T):
+        # Expressions: storage state
+        # Computes inventory level s[k,t] for material k at time t
+        # As in MInP(1), these are indexed over interval realizations rather than time
+        if t == data.firstT: # Initial inventory
+            s[k,t] = data.S0[k] \
+                - m.sum(m.iif(m.eq(t, m.start(interv[i,j,q])), data.rho_minus[i,k]*b[i,j,q], 0)
+                        for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod
+                                        if (i,k) in data.I_i_k_minus for q in data.Q[(i, j)])) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+
+        else: # Inventory update
+            s[k,t] = s[k,t-1] \
+                + m.sum(m.iif(m.eq(t, m.end(interv[i,j,q])), data.rho_plus[i,k]*b[i,j,q], 0)
+                        for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod
+                                        if (i,k) in data.I_i_k_plus for q in data.Q[(i, j)])) \
+                - m.sum(m.iif(m.eq(t, m.start(interv[i,j,q])), data.rho_minus[i,k]*b[i,j,q], 0)
+                        for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod
+                                        if (i,k) in data.I_i_k_minus for q in data.Q[(i, j)])) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+
+        # Constraints: state tracking
+        # Keeps inventory within specified bounds
+        m.constraint(s[k,t] <= data.upper_s[k])   
+        m.constraint(s[k,t] >= data.lower_s[k])  
+
+    return m, interv, s, b
+
+def base_minp_1_variable_time_different_times_relaxation(optimizer,data):
+    #
+    # Declare the optimization model
+    #
+    m = optimizer.model
+
+    # Variable: timing
+    # interv[i,j,q] is an interval variable representing the execution window of realization q of task i on unit j
+    # Unlike MIP, timing is modeled directly as intervals rather than binary start indicators
+    interv = {(i, j, q): m.interval(data.firstT, data.lastT) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]}
+
+    # Variable: amount
+    # b[i,j,q] is the amount processed by realization q of task i on unit j
+    # Unlike MIP, these are defined per interval rather than per time step
+    b = {(i, j, q): m.float(0, data.beta_max[(i, j)]) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]}
+ 
+    # Constraint: task-unit capacity
+    # Enforces that each realization is either active with fixed duration and bounded batch size,
+    # or inactive with zero duration and zero batch size
+    for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]):
+        m.constraint(
+            m.or_(
+                # Active realization: fixed duration and batch size within bounds
+                m.and_(
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+                    # Tasks are individually assigned a different processing time depending on the batch size
+                    m.eq(m.length(interv[(i, j, q)]), (data.tau_max[(i,j)]/data.beta_max[(i, j)])*b[i,j,q]),
+                    m.geq(b[i,j,q], data.beta_min[i,j]),
+                    m.leq(b[i,j,q], data.beta_max[i,j])
+                ),
+                # Inactive realization: zero duration and zero batch size
+                m.and_(
+                    m.eq(m.length(interv[(i, j, q)]), 0),
+                    m.eq(b[i,j,q], 0)
+                )
+            )
+        )
+
+    # Constraint: Non-overlapping
+    # Ensures that at most one task is active on unit j at any time t
+    # Expressed directly using interval boundaries, without auxiliary list variables
+    for j in data.J:
+        f_one_task_at_a_time = m.lambda_function(
+            lambda t: m.sum(
+                m.geq(t, m.start(interv[i,j,q])) - m.geq(t, m.end(interv[i,j,q]))
+                for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[i,j]
+            ) <= 1
+        )
+        m.constraint(m.and_(m.array(data.T), f_one_task_at_a_time))
+
+
+    s = {}
+    for k, t in ((k, t) for k in data.K for t in data.T):
+        # Expressions: storage state
+        # Computes inventory level s[k,t] for material k at time t
+        # Unlike MIP, these have been modified considering that b[i,j,q] is indexed over q (realization) rather than time
+        if t == data.firstT: # Initial inventory
+            s[k,t] = data.S0[k] \
+                - m.sum(m.iif(m.eq(t, m.start(interv[i,j,q])), data.rho_minus[i,k]*b[i,j,q], 0)
+                        for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod
+                                        if (i,k) in data.I_i_k_minus for q in data.Q[(i, j)])) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+
+        else: # Inventory update
+            s[k,t] = s[k,t-1] \
+                + m.sum(m.iif(m.eq(t, m.end(interv[i,j,q])), data.rho_plus[i,k]*b[i,j,q], 0)
+                        for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod
+                                        if (i,k) in data.I_i_k_plus for q in data.Q[(i, j)])) \
+                - m.sum(m.iif(m.eq(t, m.start(interv[i,j,q])), data.rho_minus[i,k]*b[i,j,q], 0)
+                        for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod
+                                        if (i,k) in data.I_i_k_minus for q in data.Q[(i, j)])) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+
+        # Constraints: state tracking
+        # Keeps inventory within specified bounds
+        m.constraint(s[k,t] <= data.upper_s[k])   
+        m.constraint(s[k,t] >= data.lower_s[k])  
+
+
+    return m, interv, s, b
+
+def base_minp_2_variable_time(optimizer,data):
+    #
+    # Declare the optimization model
+    #
+    m = optimizer.model
+
+    # Variable: timing
+    # interv[i,j,q] is an interval variable representing the execution window of realization q of task i on unit j
+    # Opposed to MIP: timing is modeled using intervals instead of binary variables
+    interv = {(i, j, q): m.interval(data.firstT, data.lastT) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]}
+
+    # Variable: amount
+    # b[i,j,t] is the amount processed by task i on unit j at time t
+    # As in MIP: amount variables are defined per time step
+    b = {(i, j, t): m.float(0, data.beta_max[(i, j)]) for (i, j) in data.I_i_j_prod for t in data.T}
+
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Variable: processing time
+    # tau[i,j] is the processing time of task i in unit j
+    # data.tau_max: the maximum processing time wrt. the discrete time grid
+    tau = {(i,j): m.int(0,data.tau_max[(i,j)]) for (i, j) in data.I_i_j_prod}
+
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Constraint: Linear relationship between tau and b
+    for (i,j) in data.I_i_j_prod:
+        for t in data.T:
+            m.constraint(tau[i,j] >= (data.tau_max[(i,j)]/data.beta_max[(i, j)])*b[i,j,t]) 
+
+    # Constraint: task-unit capacity
+    # Opposed to MIP: disjunctions are used to connect time-indexed amount variables to interval realizations
+    for i, j, t in ((i, j, t) for (i, j) in data.I_i_j_prod for t in data.T):
+        m.constraint(
+            b[i,j,t] <= data.beta_max[(i, j)] * m.or_(
+                m.and_(m.eq(t, m.start(interv[i,j,q])), m.neq(m.length(interv[(i, j, q)]), 0))
+                for q in data.Q[(i,j)]
+            )
+        )
+        m.constraint(
+            b[i,j,t] >= data.beta_min[(i, j)] * m.or_(
+                m.and_(m.eq(t, m.start(interv[i,j,q])), m.neq(m.length(interv[(i, j, q)]), 0))
+                for q in data.Q[(i,j)]
+            )
+        )
+
+    # Constraint: interval activation
+    # Opposed to MIP: disjunctions are used to model optional tasks
+    for i, j, q in ((i, j, q) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]):
+        m.constraint(
+            m.or_(
+                m.and_(
+                    m.eq(m.length(interv[(i, j, q)]), tau[(i, j)])
+                ),
+                m.and_(
+                    m.eq(m.length(interv[(i, j, q)]), 0)
+                )
+            )
+        )
+
+    # Constraint: Non-overlapping
+    # Opposed to MIP: expressed directly in terms of interval variables
+    for j in data.J:
+        f_one_task_at_a_time = m.lambda_function(
+            lambda t: m.sum(
+                m.geq(t, m.start(interv[i,j,q])) - m.geq(t, m.end(interv[i,j,q]))
+                for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[i,j]
+            ) <= 1
+        )
+        m.constraint(m.and_(m.array(data.T), f_one_task_at_a_time))
+
+    # Expressions: storage state
+    # Computes inventory level s[k,t] for material k at time t
+    # As in MIP: inventory is indexed over time and uses time-indexed amount variables
+    s = {}
+    for k, t in ((k, t) for k in data.K for t in data.T):
+
+        if t == data.firstT: # Initial inventory
+            s[k,t] = data.S0[k] \
+                - m.sum(data.rho_minus[i,k]*b[i,j,t]
+                       for i, j in ((i, j) for (i, j) in data.I_i_j_prod
+                                    if (i,k) in data.I_i_k_minus)) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+
+        else: # Inventory update
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Since tau[i,j] is variable, a conditional sum is needed to take the correct b_i,j,t-tau in the balance
+            s[k,t] = s[k,t-1] \
+                + m.sum(data.rho_plus[i,k]*(m.sum( m.iif(tau_partial==tau[i,j],b[i,j,t-tau_partial],0)      for tau_partial in range(0,data.tau_max[(i,j)]+1) if t-tau_partial>=data.firstT  ))
+                       for i, j in ((i, j) for (i, j) in data.I_i_j_prod
+                                    if (i,k) in data.I_i_k_plus)) \
+                - m.sum(data.rho_minus[i,k]*b[i,j,t]
+                       for i, j in ((i, j) for (i, j) in data.I_i_j_prod
+                                    if (i,k) in data.I_i_k_minus)) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+
+        # Constraints: state tracking
+        # Keeps inventory within specified bounds
+        m.constraint(s[k,t] <= data.upper_s[k])   
+        m.constraint(s[k,t] >= data.lower_s[k])  
+
+
+
+    return m, interv, s, b
+
+def base_minlip_2_variable_time(optimizer,data):
+
+    #
+    # Declare the optimization model
+    #
+    m = optimizer.model
+
+    # Variable: timing
+    # interv[i,j,q] is an interval variable representing realization q of task i on unit j
+    # As in MInP(2): interval variables replace binary timing variables from MIP
+    interv = {(i, j, q): m.interval(data.firstT, data.lastT) for (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]}
+
+    # Variable: amount
+    # b[i,j,t] is the amount processed by task i on unit j at time t
+    # As in MInP(2): amount variables are defined per time step
+    b = {(i, j, t): m.float(0, data.beta_max[(i, j)]) for (i, j) in data.I_i_j_prod for t in data.T}
+
+    # Variable: order
+    # order[j] is a list variable representing the execution order of tasks on unit j
+    # Opposite to MInP(2): list variables are introduced to model optional tasks and sequencing
+    order = {j: m.list(sum(data.upper_n[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod)) for j in data.J}
+
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Variable: processing time
+    # tau[i,j] is the processing time of task i in unit j
+    # data.tau_max: the maximum processing time wrt. the discrete time grid
+    tau = {(i,j): m.int(0,data.tau_max[(i,j)]) for (i, j) in data.I_i_j_prod}
+
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Constraint: Linear relationship between tau and b
+    for (i,j) in data.I_i_j_prod:
+        for t in data.T:
+            m.constraint(tau[i,j] >= (data.tau_max[(i,j)]/data.beta_max[(i, j)])*b[i,j,t])   
+
+    # Constraint: task-unit capacity
+    # As in MInP(2): disjunctions connect time-indexed amount variables to interval realizations
+    for i, j, t in ((i, j, t) for (i, j) in data.I_i_j_prod for t in data.T):
+        m.constraint(
+            b[i,j,t] <= data.beta_max[(i, j)] * m.or_(
+                m.and_(m.eq(t, m.start(interv[i,j,q])), m.neq(m.length(interv[(i, j, q)]), 0))
+                for q in data.Q[(i,j)]
+            )
+        )
+        m.constraint(
+            b[i,j,t] >= data.beta_min[(i, j)] * m.or_(
+                m.and_(m.eq(t, m.start(interv[i,j,q])), m.neq(m.length(interv[(i, j, q)]), 0))
+                for q in data.Q[(i,j)]
+            )
+        )
+
+
+    for j in data.J:
+        interv_array = m.array([interv[i, j, q] for i in data.I if (i, j) in data.I_i_j_prod for q in data.Q[(i, j)]])
+        tau_array = m.array([tau[(i, j)] for i in data.I if (i, j) in data.I_i_j_prod for _ in data.Q[(i, j)]])
+
+        # Constraint: non-overlapping
+        # Opposite to MInP(2): sequencing is enforced using list variables
+        f_one_task_at_a_time = m.lambda_function(
+            lambda pos: interv_array[order[j][pos-1]] < interv_array[order[j][pos]]
+        )
+        m.constraint(m.and_(m.range(1, m.count(order[j])), f_one_task_at_a_time))
+
+        for pos in range(m.count(interv_array)):
+            # Constraint: interval length
+            # Ensures that interval length is zero if task is not in the list, or tau if it is
+            m.constraint( m.length(interv_array[pos]) == m.contains(order[j], pos) * tau_array[pos])
+            # Opposite to MInP(2): interval length is tied to list membership
+
+
+    s = {}
+    for k, t in ((k, t) for k in data.K for t in data.T):
+
+        # Expressions: storage state
+        # As in MInP(2): inventory is indexed over time and updated using amount variables
+        if t == data.firstT: # Initial inventory
+            s[k,t] = data.S0[k] \
+                - m.sum(data.rho_minus[i,k]*b[i,j,t]
+                       for i, j in ((i, j) for (i, j) in data.I_i_j_prod
+                                    if (i,k) in data.I_i_k_minus)) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+        else: # Inventory update
+#--> CHANGE WRT. FORMULATION WITH FIXED PROCESSING TIME
+    # Since tau[i,j] is variable, a conditional sum is needed to take the correct b_i,j,t-tau in the balance
+            s[k,t] = s[k,t-1] \
+                + m.sum(data.rho_plus[i,k]*(m.sum( m.iif(tau_partial==tau[i,j],b[i,j,t-tau_partial],0)      for tau_partial in range(0,data.tau_max[(i,j)]+1) if t-tau_partial>=data.firstT  ))
+                       for i, j in ((i, j) for (i, j) in data.I_i_j_prod
+                                    if (i,k) in data.I_i_k_plus )) \
+                - m.sum(data.rho_minus[i,k]*b[i,j,t]
+                       for i, j in ((i, j) for (i, j) in data.I_i_j_prod
+                                    if (i,k) in data.I_i_k_minus)) \
+                + data.replenishment[k,t] \
+                - data.demand[k,t]
+
+        # Constraints: state tracking
+        m.constraint(s[k,t] <= data.upper_s[k])   
+        m.constraint(s[k,t] >= data.lower_s[k])  
+
+
+
+    return m, interv, s, b
+
