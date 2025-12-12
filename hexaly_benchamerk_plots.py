@@ -94,7 +94,7 @@ def performance_plots(# file info
 
 
             for df in dfs:
-                df[column_name] = df[best_obj_header]- row_min
+                df[column_name] = df[best_obj_header] - row_min
 
         else:
             #  use np.inf for failed rows
@@ -115,17 +115,19 @@ def performance_plots(# file info
 
 
     #3. Find minimum and maximum
-
+    # for df in dfs:
+    #     print(df)
     # Filter for succesful runs
     filter_success_for_min_max = lambda df: df[(df['__success_header__'] == 'ok') & df[column_name].apply(is_real_numeric)][column_name]
 
 
-    min_candidates = [filter_success_for_min_max(df).min() for df in dfs]
-    max_candidates = [filter_success_for_min_max(df).max() for df in dfs]
+    min_candidates = [filter_success_for_min_max(df).min() for df in dfs if is_real_numeric(filter_success_for_min_max(df).min())]
+    max_candidates = [filter_success_for_min_max(df).max() for df in dfs if is_real_numeric(filter_success_for_min_max(df).max())]
 
     min_value = min(min_candidates, default=0)
+    # print(min_value)
     max_value = max(max_candidates, default=1)
-
+    # print(max_value)
     if not min_candidates:
         dimensionless_x_axis=True
 
@@ -141,6 +143,15 @@ def performance_plots(# file info
     tau_range = np.arange(0, 1, tau)
     if 1 not in tau_range:
         tau_range = np.append(tau_range, 1)
+
+
+
+
+    line_styles=['solid']*7
+    marker_style=['o','v','s','*','x','d','^']
+    marker_sizes=[6,6,6,8,6,6,6]
+    marker_face_colors=['none','none','none','none','none','none','none']
+    mark_every=[(1,100),(80,100),(160,100),(240,100),(320,100),(400,100),(480,100)]
 
     for index,name in enumerate(alg_names):
         df=dfs[index]
@@ -161,11 +172,15 @@ def performance_plots(# file info
 
         # Plot the performance profile for this method
         if dimensionless_x_axis:
-            plt.plot(tau_range, success_rates, label=name)
+            plt.plot(tau_range, success_rates, label=name,
+                    linestyle=line_styles[index],linewidth=1,
+                     marker=marker_style[index],markersize=marker_sizes[index],markerfacecolor=marker_face_colors[index],markevery=mark_every[index])
             add='Dimensionless'
         
         else:
-            plt.plot(x_axes_val, success_rates, label=name)
+            plt.plot(x_axes_val, success_rates, label=name,
+                    linestyle=line_styles[index],linewidth=1,
+                     marker=marker_style[index],markersize=marker_sizes[index],markerfacecolor=marker_face_colors[index],markevery=mark_every[index])
             add=''
 
     # Formatting the plot
@@ -258,17 +273,47 @@ if __name__ == '__main__':
     # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
 
 
-    # ---Simplified formulation: ESCAPE abstract---
-    sheet_names=['Formulation_1','Formulation_4','Formulation_2','Formulation_3','Formulation_5']
-    alg_names=['MIP','MInP (Set-based 1)','Set-based 2','Set-based 3','Set-based 4']
+    # ---ESCAPE ---
+    sheet_names=['Formulation_1','Formulation_4','Formulation_5']
+    alg_names=['MIP','MInP','MInLiP']
     # success_input=['HxSolutionStatus.OPTIMAL','HxSolutionStatus.FEASIBLE']
     success_input=['HxSolutionStatus.OPTIMAL']
 
     file_name="known_n.xlsx"
     file_path = Path("./hexaly_benchmarking_results/"+file_name)
-    file_paths=[str(file_path)]*5
+    file_paths=[str(file_path)]*3
 
     
     # time
+    success_criterion="time"
+    performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
+
+
+
+
+
+
+    # Case study 2
+    sheet_names=['Formulation_1','Formulation_4','Formulation_5']
+    alg_names=['MIP','MInP','MInLiP']
+
+
+    file_name="original_2.xlsx"
+    file_path = Path("./hexaly_benchmarking_results/"+file_name)
+    file_paths=[str(file_path)]*3
+
+    success_criterion="time"
+    performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
+
+
+    # Case study 3
+    sheet_names=['Formulation_1','Formulation_4','Formulation_5']
+    alg_names=['MIP','MInP','MInLiP']
+
+
+    file_name="original_3.xlsx"
+    file_path = Path("./hexaly_benchmarking_results/"+file_name)
+    file_paths=[str(file_path)]*3
+
     success_criterion="time"
     performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
