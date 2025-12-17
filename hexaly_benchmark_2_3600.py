@@ -432,7 +432,7 @@ if __name__ == '__main__':
     # Benchmarking Parameters
     # ------------------------
     delta_f = 1         # Base time step (in time units)
-    time_limit = 300    # Time limit for optimization (in seconds)
+    time_limit = 3600    # Time limit for optimization (in seconds)
     seed = 1            # Random seed for reproducibility
 
     # ------------------------
@@ -488,9 +488,9 @@ if __name__ == '__main__':
         # ------------------------
         # Save Intermediate Tables
         # ------------------------
-        flush_table_to_txt("original_2.txt", original_table, list(unknown_n_formulations.keys()))
+        flush_table_to_txt("original_2_3600.txt", original_table, list(unknown_n_formulations.keys()))
 
     # ------------------------
     # Save Final Results
     # ------------------------
-    write_to_excel("original_2.xlsx", original_results)
+    write_to_excel("original_2_3600.xlsx", original_results)

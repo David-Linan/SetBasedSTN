@@ -7,7 +7,9 @@ SCRIPTS=(
 
     "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark.py"
     "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_2.py"
-    "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_3.py"
+    # "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_3.py"
+    "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_3600.py"
+    "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_2_3600.py"
 )
 
 # Check if all files exist
