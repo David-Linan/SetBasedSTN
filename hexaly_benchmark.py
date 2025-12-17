@@ -182,6 +182,8 @@ def mip(optimizer,data):
 def minp_1(optimizer,data):
 
     m, interv, s, b=base_minp_1(optimizer,data)
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
 
     # Objective
     # Maximize profit: final inventory value minus total task costs
@@ -197,6 +199,9 @@ def minlip_1(optimizer,data):
 
     m, interv, s, b=base_minlip_1(optimizer,data)
 
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
+
     # Objective
     # Maximize profit: final inventory value minus total task costs
     # Task cost is counted only for active realizations (length > 0)
@@ -210,6 +215,8 @@ def minlip_1(optimizer,data):
 def minp_2(optimizer,data):
 
     m, interv, s, b=base_minp_2(optimizer,data)
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
 
     # Objective
     # Maximize profit: final inventory value minus total task costs
@@ -224,6 +231,8 @@ def minp_2(optimizer,data):
 def minlip_2(optimizer,data):
 
     m, interv, s, b=base_minlip_2(optimizer,data)
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
 
     # Objective
     # As in MInP(2): maximize profit as final inventory value minus cost of active tasks
@@ -257,6 +266,9 @@ def minp_1_known_n(optimizer,data,n):
 
     m, interv, s, b=base_minp_1_known_n(optimizer,data,n)
 
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
+
     # Objective
     # Opposite to MInP(1): cost is computed using fixed number of realizations rather than checking interval length
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
@@ -268,6 +280,9 @@ def minp_1_known_n(optimizer,data,n):
 def minlip_1_known_n(optimizer,data,n):
  
     m, interv, s, b=base_minlip_1_known_n(optimizer,data,n)
+
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
 
     # Objective
     # Opposite to MInLiP(1): cost is computed using fixed number of realizations rather than checking interval length
@@ -281,6 +296,9 @@ def minp_2_known_n(optimizer,data,n):
 
     m, interv, s, b=base_minp_2_known_n(optimizer,data,n)
 
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
+
     # Objective
     # Opposite to MInP(2): cost is computed using fixed number of realizations rather than checking interval length
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
@@ -293,6 +311,9 @@ def minlip_2_known_n(optimizer,data,n):
 
     m, interv, s, b=base_minlip_2_known_n(optimizer,data,n)
 
+    # Constraint: time horizon constraint: projects must complete within the scheduling period
+    #NOTE: Not needed. Already implicity in interval definition
+    
     # Objective
     # Opposite to MInLiP(2): cost is computed using fixed number of realizations rather than checking interval length
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
