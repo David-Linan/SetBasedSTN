@@ -166,11 +166,6 @@ def mip(optimizer,data):
 
     m, x, s, b=base_mip(optimizer,data)
 
-    # Constraint: time horizon constraint: projects must complete within the scheduling period
-    for (i,j) in data.I_i_j_prod:
-        for t in (tt for tt in data.T if tt>= data.lastT-data.tau[(i,j)]+1):
-            m.constraint(x[i,j,t]==0)
-
     # Objective
     # Maximize profit: final inventory value minus total task costs
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
@@ -239,11 +234,6 @@ def minlip_2(optimizer,data):
 def mip_known_n(optimizer,data,n):
 
     m, x, s, b=base_mip_known_n(optimizer,data,n)
-
-    # Constraint: time horizon constraint: projects must complete within the scheduling period
-    for (i,j) in data.I_i_j_prod:
-        for t in (tt for tt in data.T if tt>= data.lastT-data.tau[(i,j)]+1):
-            m.constraint(x[i,j,t]==0)
 
     # Objective
     # Opposite to MIP: cost is computed using fixed number of executions n[i,j] instead of summing over x[i,j,t]
@@ -428,7 +418,7 @@ if __name__ == '__main__':
     # ------------------------
     eta_f = 120         # Scheduling horizon (in time units)
     delta_f = 1         # Base time step (in time units)
-    time_limit = 300    # Time limit for optimization (in seconds)
+    time_limit = 3600    # Time limit for optimization (in seconds)
     seed = 1            # Random seed for reproducibility
 
     # ------------------------
@@ -462,7 +452,16 @@ if __name__ == '__main__':
     # ------------------------
     original_results = {}     # Stores raw results for unknown-n formulations
     known_n_results = {}      # Stores results for known-n formulations
-    n_mip = {acc_level: {} for acc_level in relevant_acc_levels}  # Stores extracted n from MIP
+
+    # Read n_mip
+    input_path = Path("./hexaly_benchmarking_results")
+    df = pd.read_excel(input_path / "mip_n.xlsx")
+    n_mip = {
+        int(row["acc"]): {
+            tuple(col.split("_")): int(row[col]) for col in df.columns if col != "acc"
+        }
+        for _, row in df.iterrows()
+    }
 
     original_table = {}       # Tabular format for unknown-n results
     known_table = {}          # Tabular format for known-n results
@@ -472,37 +471,37 @@ if __name__ == '__main__':
     # ------------------------
     for acc in relevant_acc_levels:
         # Run all unknown-n formulations
-        for key, formulation in unknown_n_formulations.items():
-            data = Data(eta_f=eta_f, delta_f=delta_f, acc_level=acc)
-            with HexalyOptimizer() as optimizer:
-                # Build and solve model
-                m, x, s, b = formulation(optimizer, data)
-                m.close()
-                optimizer.param.time_limit = time_limit
-                optimizer.param.seed = seed
-                optimizer.solve()
+        # for key, formulation in unknown_n_formulations.items():
+        #     data = Data(eta_f=eta_f, delta_f=delta_f, acc_level=acc)
+        #     with HexalyOptimizer() as optimizer:
+        #         # Build and solve model
+        #         m, x, s, b = formulation(optimizer, data)
+        #         m.close()
+        #         optimizer.param.time_limit = time_limit
+        #         optimizer.param.seed = seed
+        #         optimizer.solve()
 
-                # Extract solution metrics
-                objective = optimizer.solution.get_value(m.objectives[0])
-                objective_bound = optimizer.solution.get_objective_bound(0)
-                objective_gap = optimizer.solution.get_objective_gap(0) * 100
-                comp_time = optimizer.statistics.get_running_time()
-                status = str(optimizer.solution.status)
+        #         # Extract solution metrics
+        #         objective = optimizer.solution.get_value(m.objectives[0])
+        #         objective_bound = optimizer.solution.get_objective_bound(0)
+        #         objective_gap = optimizer.solution.get_objective_gap(0) * 100
+        #         comp_time = optimizer.statistics.get_running_time()
+        #         status = str(optimizer.solution.status)
 
-                # Store results
-                original_results.setdefault(key, []).append([
-                    acc, objective, objective_bound, objective_gap, comp_time, status
-                ])
-                original_table.setdefault(acc, {})[key] = [
-                    objective, objective_bound, objective_gap, comp_time, status
-                ]
+        #         # Store results
+        #         original_results.setdefault(key, []).append([
+        #             acc, objective, objective_bound, objective_gap, comp_time, status
+        #         ])
+        #         original_table.setdefault(acc, {})[key] = [
+        #             objective, objective_bound, objective_gap, comp_time, status
+        #         ]
 
-                # Extract execution counts from MIP solution
-                if key == 1:
-                    n_mip[acc] = {
-                        (i, j): sum(round(x[i, j, t].value) for t in data.T)
-                        for (i, j) in data.I_i_j_prod
-                    }
+        #         # Extract execution counts from MIP solution
+        #         if key == 1:
+        #             n_mip[acc] = {
+        #                 (i, j): sum(round(x[i, j, t].value) for t in data.T)
+        #                 for (i, j) in data.I_i_j_prod
+        #             }
 
         # Run all known-n formulations using extracted n from MIP
         for key, formulation in known_n_formulations.items():
@@ -532,17 +531,11 @@ if __name__ == '__main__':
         # ------------------------
         # Save Intermediate Tables
         # ------------------------
-        flush_table_to_txt("original.txt", original_table, list(unknown_n_formulations.keys()))
-        flush_table_to_txt("known_n.txt", known_table, list(known_n_formulations.keys()))
+        # flush_table_to_txt("original.txt", original_table, list(unknown_n_formulations.keys()))
+        flush_table_to_txt("known_n_3600.txt", known_table, list(known_n_formulations.keys()))
 
     # ------------------------
     # Save Final Results
     # ------------------------
-    write_to_excel("original.xlsx", original_results)
-    write_to_excel("known_n.xlsx", known_n_results)
-
-    # Save extracted execution counts from MIP
-    write_mip_n_excel(n_mip, data)
-
-    # Print extracted n values for inspection
-    print(n_mip)
+    # write_to_excel("original.xlsx", original_results)
+    write_to_excel("known_n_3600.xlsx", known_n_results)
