@@ -456,6 +456,8 @@ if __name__ == '__main__':
     # ------------------------
     # Benchmarking Loop
     # ------------------------
+    solve=False #If problems will be solved and information saved
+
     time_horizons=range(5,17+1)
 
     for eta_f in time_horizons:
@@ -468,29 +470,32 @@ if __name__ == '__main__':
                 m.close()
                 optimizer.param.time_limit = time_limit
                 optimizer.param.seed = seed
-                optimizer.solve()
+                if solve:
+                    optimizer.solve()
 
-                # Extract solution metrics
-                objective = optimizer.solution.get_value(m.objectives[0])
-                objective_bound = optimizer.solution.get_objective_bound(0)
-                objective_gap = optimizer.solution.get_objective_gap(0) * 100
-                comp_time = optimizer.statistics.get_running_time()
-                status = str(optimizer.solution.status)
+                    # Extract solution metrics
+                    objective = optimizer.solution.get_value(m.objectives[0])
+                    objective_bound = optimizer.solution.get_objective_bound(0)
+                    objective_gap = optimizer.solution.get_objective_gap(0) * 100
+                    comp_time = optimizer.statistics.get_running_time()
+                    status = str(optimizer.solution.status)
 
-                # Store results
-                original_results.setdefault(key, []).append([
-                    eta_f, objective, objective_bound, objective_gap, comp_time, status
-                ])
-                original_table.setdefault(eta_f, {})[key] = [
-                    objective, objective_bound, objective_gap, comp_time, status
-                ]
+                    # Store results
+                    original_results.setdefault(key, []).append([
+                        eta_f, objective, objective_bound, objective_gap, comp_time, status
+                    ])
+                    original_table.setdefault(eta_f, {})[key] = [
+                        objective, objective_bound, objective_gap, comp_time, status
+                    ]
 
         # ------------------------
         # Save Intermediate Tables
         # ------------------------
-        flush_table_to_txt("original_2.txt", original_table, list(unknown_n_formulations.keys()))
+        if solve:
+            flush_table_to_txt("original_2.txt", original_table, list(unknown_n_formulations.keys()))
 
     # ------------------------
     # Save Final Results
     # ------------------------
-    write_to_excel("original_2.xlsx", original_results)
+    if solve:
+        write_to_excel("original_2.xlsx", original_results)

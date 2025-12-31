@@ -497,6 +497,8 @@ if __name__ == '__main__':
     # ------------------------
     # Benchmarking Loop
     # ------------------------
+    solve=False #If problems will be solved and information saved
+
     for acc in relevant_acc_levels:
         # Run all unknown-n formulations
         # for key, formulation in unknown_n_formulations.items():
@@ -539,31 +541,37 @@ if __name__ == '__main__':
                 m.close()
                 optimizer.param.time_limit = time_limit
                 optimizer.param.seed = seed
-                optimizer.solve()
+                print('----Acc level used: ',acc,'-----')
+                print('Formulation ',formulation)
+                print(m,'\n')
+                if solve:
+                    optimizer.solve()
 
-                # Extract solution metrics
-                objective = optimizer.solution.get_value(m.objectives[0])
-                objective_bound = optimizer.solution.get_objective_bound(0)
-                objective_gap = optimizer.solution.get_objective_gap(0) * 100
-                comp_time = optimizer.statistics.get_running_time()
-                status = str(optimizer.solution.status)
+                    # Extract solution metrics
+                    objective = optimizer.solution.get_value(m.objectives[0])
+                    objective_bound = optimizer.solution.get_objective_bound(0)
+                    objective_gap = optimizer.solution.get_objective_gap(0) * 100
+                    comp_time = optimizer.statistics.get_running_time()
+                    status = str(optimizer.solution.status)
 
-                # Store results
-                known_n_results.setdefault(key, []).append([
-                    acc, objective, objective_bound, objective_gap, comp_time, status
-                ])
-                known_table.setdefault(acc, {})[key] = [
-                    objective, objective_bound, objective_gap, comp_time, status
-                ]
+                    # Store results
+                    known_n_results.setdefault(key, []).append([
+                        acc, objective, objective_bound, objective_gap, comp_time, status
+                    ])
+                    known_table.setdefault(acc, {})[key] = [
+                        objective, objective_bound, objective_gap, comp_time, status
+                    ]
 
         # ------------------------
         # Save Intermediate Tables
         # ------------------------
         # flush_table_to_txt("original.txt", original_table, list(unknown_n_formulations.keys()))
-        flush_table_to_txt("known_n_3600.txt", known_table, list(known_n_formulations.keys()))
+        if solve:
+            flush_table_to_txt("known_n_3600.txt", known_table, list(known_n_formulations.keys()))
 
     # ------------------------
     # Save Final Results
     # ------------------------
     # write_to_excel("original.xlsx", original_results)
-    write_to_excel("known_n_3600.xlsx", known_n_results)
+    if solve:
+        write_to_excel("known_n_3600.xlsx", known_n_results)
