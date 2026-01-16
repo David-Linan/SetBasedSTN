@@ -497,42 +497,9 @@ if __name__ == '__main__':
     # ------------------------
     # Benchmarking Loop
     # ------------------------
-    solve=False #If problems will be solved and information saved
+    solve=True #If problems will be solved and information saved
 
     for acc in relevant_acc_levels:
-        # Run all unknown-n formulations
-        # for key, formulation in unknown_n_formulations.items():
-        #     data = Data(eta_f=eta_f, delta_f=delta_f, acc_level=acc)
-        #     with HexalyOptimizer() as optimizer:
-        #         # Build and solve model
-        #         m, x, s, b = formulation(optimizer, data)
-        #         m.close()
-        #         optimizer.param.time_limit = time_limit
-        #         optimizer.param.seed = seed
-        #         optimizer.solve()
-
-        #         # Extract solution metrics
-        #         objective = optimizer.solution.get_value(m.objectives[0])
-        #         objective_bound = optimizer.solution.get_objective_bound(0)
-        #         objective_gap = optimizer.solution.get_objective_gap(0) * 100
-        #         comp_time = optimizer.statistics.get_running_time()
-        #         status = str(optimizer.solution.status)
-
-        #         # Store results
-        #         original_results.setdefault(key, []).append([
-        #             acc, objective, objective_bound, objective_gap, comp_time, status
-        #         ])
-        #         original_table.setdefault(acc, {})[key] = [
-        #             objective, objective_bound, objective_gap, comp_time, status
-        #         ]
-
-        #         # Extract execution counts from MIP solution
-        #         if key == 1:
-        #             n_mip[acc] = {
-        #                 (i, j): sum(round(x[i, j, t].value) for t in data.T)
-        #                 for (i, j) in data.I_i_j_prod
-        #             }
-
         # Run all known-n formulations using extracted n from MIP
         for key, formulation in known_n_formulations.items():
             data = Data(eta_f=eta_f, delta_f=delta_f, acc_level=acc)
@@ -565,13 +532,13 @@ if __name__ == '__main__':
         # ------------------------
         # Save Intermediate Tables
         # ------------------------
-        # flush_table_to_txt("original.txt", original_table, list(unknown_n_formulations.keys()))
+
         if solve:
             flush_table_to_txt("known_n_3600.txt", known_table, list(known_n_formulations.keys()))
 
     # ------------------------
     # Save Final Results
     # ------------------------
-    # write_to_excel("original.xlsx", original_results)
+
     if solve:
         write_to_excel("known_n_3600.xlsx", known_n_results)

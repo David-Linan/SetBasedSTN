@@ -455,7 +455,7 @@ if __name__ == '__main__':
     # ------------------------
     # Benchmarking Loop
     # ------------------------
-    solve=False #If problems will be solved and information saved
+    solve=True #If problems will be solved and information saved
 
     time_horizons=range(5,17+1)
 

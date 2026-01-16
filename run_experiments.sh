@@ -5,11 +5,9 @@ PYTHON="/home/ldavilr/repos/SetBasedSTN/.setbasedstnenv/bin/python"
 # List of all required script paths
 SCRIPTS=(
 
-    "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark.py"
-    "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_2.py"
-    "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_3.py"
-    "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_3600.py"
     "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_2_3600.py"
+    "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_3600.py"
+    "/home/ldavilr/repos/SetBasedSTN/hexaly_benchmark_plots.py"
 )
 
 # Check if all files exist

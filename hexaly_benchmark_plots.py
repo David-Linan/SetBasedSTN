@@ -212,118 +212,19 @@ def performance_plots(# file info
 if __name__ == '__main__':
 
 
-    # ---Fixed configuration---
-    sheet_names=['Formulation_1','Formulation_2','Formulation_3','Formulation_4','Formulation_5']
-    alg_names=['MIP','MInP(1)','MInLiP(1)','MInP(2)','MInLiP(2)']
     best_obj_headers='Objective'
     time_header='Time [s]'
     bound_header='Obj. bound'
     gap_header='Obj. gap'
     success_header='Status'
-    success_input=['HxSolutionStatus.OPTIMAL','HxSolutionStatus.FEASIBLE']
     tau=0.001
     dimensionless_x_axis=False
 
-    # # ---Original formulation---
 
-    # file_name="original.xlsx"
-    # file_path = Path("./hexaly_benchmarking_results/"+file_name)
-    # file_paths=[str(file_path)]*5
-
-    # # obj distance
-    # success_criterion="objective-distance"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-    # # bound distance
-    # success_criterion="bound-distance"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-    # # time
-    # success_criterion="time"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-    # # gap
-    # success_criterion="gap"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-
-
-
-    # # ---Simplified formulation---
-
-    # file_name="known_n.xlsx"
-    # file_path = Path("./hexaly_benchmarking_results/"+file_name)
-    # file_paths=[str(file_path)]*5
-
-
-    # # obj distance
-    # success_criterion="objective-distance"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-    # # bound distance
-    # success_criterion="bound-distance"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-    # # time
-    # success_criterion="time"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-    # # gap
-    # success_criterion="gap"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-
-    # ---ESCAPE ---
-    # sheet_names=['Formulation_1','Formulation_4','Formulation_5']
-    # alg_names=['MIP','MIDP','MILDP']
-    # # success_input=['HxSolutionStatus.OPTIMAL','HxSolutionStatus.FEASIBLE']
-    # success_input=['HxSolutionStatus.OPTIMAL']
-
-    # file_name="known_n.xlsx"
-    # file_path = Path("./hexaly_benchmarking_results/"+file_name)
-    # file_paths=[str(file_path)]*3
-
-    
-    # # time
-    # success_criterion="time"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-
-
-    # # Case study 2
-    # sheet_names=['Formulation_1','Formulation_4','Formulation_5']
-    # alg_names=['MIP','MIDP','MILDP']
-
-
-    # file_name="original_2.xlsx"
-    # file_path = Path("./hexaly_benchmarking_results/"+file_name)
-    # file_paths=[str(file_path)]*3
-
-    # success_criterion="time"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-
-    # # Case study 3
-    # sheet_names=['Formulation_1','Formulation_4','Formulation_5']
-    # alg_names=['MIP','MIDP','MILDP']
-
-
-    # file_name="original_3.xlsx"
-    # file_path = Path("./hexaly_benchmarking_results/"+file_name)
-    # file_paths=[str(file_path)]*3
-
-    # success_criterion="time"
-    # performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
-
-
-
-
-# 3600 s time limit
 
 
     sheet_names=['Formulation_1','Formulation_4','Formulation_5']
     alg_names=['MIP','MIDP','MILDP']
-    # success_input=['HxSolutionStatus.OPTIMAL','HxSolutionStatus.FEASIBLE']
     success_input=['HxSolutionStatus.OPTIMAL']
 
     file_name="known_n_3600.xlsx"
@@ -337,7 +238,6 @@ if __name__ == '__main__':
 
 
 
-    # Case study 2
     sheet_names=['Formulation_1','Formulation_4','Formulation_5']
     alg_names=['MIP','MIDP','MILDP']
 
@@ -355,7 +255,6 @@ if __name__ == '__main__':
     sheet_names=['Formulation_1','Formulation_4','Formulation_5']
     alg_names=['MIP','MIDP','MILDP']
     success_input=['HxSolutionStatus.OPTIMAL','HxSolutionStatus.FEASIBLE']
-    # success_input=['HxSolutionStatus.OPTIMAL']
 
     file_name="known_n_3600.xlsx"
     file_path = Path("./hexaly_benchmarking_results/"+file_name)
@@ -367,8 +266,6 @@ if __name__ == '__main__':
     performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
 
 
-
-    # Case study 2
     sheet_names=['Formulation_1','Formulation_4','Formulation_5']
     alg_names=['MIP','MIDP','MILDP']
 
