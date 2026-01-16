@@ -115,8 +115,8 @@ def performance_plots(# file info
 
 
     #3. Find minimum and maximum
-    # for df in dfs:
-    #     print(df)
+    for df in dfs:
+        print(df)
     # Filter for succesful runs
     filter_success_for_min_max = lambda df: df[(df['__success_header__'] == 'ok') & df[column_name].apply(is_real_numeric)][column_name]
 
@@ -219,9 +219,8 @@ if __name__ == '__main__':
     success_header='Status'
     tau=0.001
     dimensionless_x_axis=False
-
-
-
+    
+    # time
 
     sheet_names=['Formulation_1','Formulation_4','Formulation_5']
     alg_names=['MIP','MIDP','MILDP']
@@ -231,8 +230,6 @@ if __name__ == '__main__':
     file_path = Path("./hexaly_benchmarking_results/"+file_name)
     file_paths=[str(file_path)]*3
 
-    
-    # time
     success_criterion="time"
     performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
 
@@ -249,6 +246,37 @@ if __name__ == '__main__':
     success_criterion="time"
     performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
 
+
+
+
+
+
+    
+    # gap
+    sheet_names=['Formulation_1','Formulation_4','Formulation_5']
+    alg_names=['MIP','MIDP','MILDP']
+    success_input=['HxSolutionStatus.OPTIMAL','HxSolutionStatus.FEASIBLE']
+
+    file_name="known_n_3600.xlsx"
+    file_path = Path("./hexaly_benchmarking_results/"+file_name)
+    file_paths=[str(file_path)]*3
+
+    success_criterion="gap"
+    performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
+
+
+    sheet_names=['Formulation_1','Formulation_4','Formulation_5']
+    alg_names=['MIP','MIDP','MILDP']
+
+
+    file_name="original_2_3600.xlsx"
+    file_path = Path("./hexaly_benchmarking_results/"+file_name)
+    file_paths=[str(file_path)]*3
+
+    success_criterion="gap"
+    performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
+
+    # distance to best
 
 
 
@@ -260,9 +288,7 @@ if __name__ == '__main__':
     file_path = Path("./hexaly_benchmarking_results/"+file_name)
     file_paths=[str(file_path)]*3
 
-    
-    # time
-    success_criterion="gap"
+    success_criterion="objective-distance"
     performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
 
 
@@ -274,6 +300,6 @@ if __name__ == '__main__':
     file_path = Path("./hexaly_benchmarking_results/"+file_name)
     file_paths=[str(file_path)]*3
 
-    success_criterion="gap"
+    success_criterion="objective-distance"
     performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
 
