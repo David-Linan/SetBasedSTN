@@ -247,6 +247,17 @@ if __name__ == '__main__':
     performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
 
 
+    sheet_names=['Formulation_1','Formulation_4','Formulation_5']
+    alg_names=['MIP','MIDP','MILDP']
+
+
+    file_name="unknown_n_300.xlsx"
+    file_path = Path("./hexaly_benchmarking_results/"+file_name)
+    file_paths=[str(file_path)]*3
+
+    success_criterion="time"
+    performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
+
 
 
 
@@ -276,6 +287,21 @@ if __name__ == '__main__':
     success_criterion="gap"
     performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
 
+
+    sheet_names=['Formulation_1','Formulation_4','Formulation_5']
+    alg_names=['MIP','MIDP','MILDP']
+
+
+    file_name="unknown_n_300.xlsx"
+    file_path = Path("./hexaly_benchmarking_results/"+file_name)
+    file_paths=[str(file_path)]*3
+
+    success_criterion="gap"
+    performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
+
+
+
+
     # distance to best
 
 
@@ -297,6 +323,18 @@ if __name__ == '__main__':
 
 
     file_name="original_2_3600.xlsx"
+    file_path = Path("./hexaly_benchmarking_results/"+file_name)
+    file_paths=[str(file_path)]*3
+
+    success_criterion="objective-distance"
+    performance_plots(file_paths,sheet_names,alg_names,best_obj_headers,time_header,bound_header,gap_header,success_header,success_input,success_criterion,tau=tau,dimensionless_x_axis=dimensionless_x_axis)
+
+
+    sheet_names=['Formulation_1','Formulation_4','Formulation_5']
+    alg_names=['MIP','MIDP','MILDP']
+
+
+    file_name="unknown_n_300.xlsx"
     file_path = Path("./hexaly_benchmarking_results/"+file_name)
     file_paths=[str(file_path)]*3
 

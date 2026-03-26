@@ -5,7 +5,7 @@ from tabulate import tabulate
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from base_formulations import base_mip_known_n,base_minp_1_known_n,base_minlip_1_known_n,base_minp_2_known_n,base_minlip_2_known_n
+from base_formulations import base_mip,base_minp_1,base_minlip_1,base_minp_2,base_minlip_2
 
 # === Problem data ===
 class Data:
@@ -160,11 +160,11 @@ class Data:
             for (i,j) in self.I_i_j_prod
         }     
  
-# === Simplified STN formualtions (without optional tasks) ===
+# === General STN formualtions (with optional tasks) ===
+        
+def mip(optimizer,data):
 
-def mip_known_n(optimizer,data,n):
-
-    m, x, s, b=base_mip_known_n(optimizer,data,n)
+    m, x, s, b=base_mip(optimizer,data)
 
     # Constraint: time horizon constraint: projects must complete within the scheduling period
     for (i,j) in data.I_i_j_prod:
@@ -172,68 +172,78 @@ def mip_known_n(optimizer,data,n):
             m.constraint(x[i,j,t]==0)
 
     # Objective
-    # Opposite to MIP: cost is computed using fixed number of executions n[i,j] instead of summing over x[i,j,t]
+    # Maximize profit: final inventory value minus total task costs
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*n[i,j] for (i, j) in data.I_i_j_prod)
+           - m.sum(data.cost[i,j]*m.sum(x[i,j,t] for t in data.T) for (i, j) in data.I_i_j_prod)
     m.minimize(-profit)
 
     return m, x, s, b
 
-def minp_1_known_n(optimizer,data,n):
+def minp_1(optimizer,data):
 
-    m, interv, s, b=base_minp_1_known_n(optimizer,data,n)
+    m, interv, s, b=base_minp_1(optimizer,data)
+
     # Constraint: time horizon constraint: projects must complete within the scheduling period
     #NOTE: Not needed. Already implicity in interval definition
 
     # Objective
-    # Opposite to MInP(1): cost is computed using fixed number of realizations rather than checking interval length
+    # Maximize profit: final inventory value minus total task costs
+    # Task cost is counted only for active realizations (length > 0)
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*m.sum(1 for _ in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
+           - m.sum(data.cost[i,j]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])
+                   for (i, j) in data.I_i_j_prod)
     m.minimize(-profit)
 
     return m, interv, s, b
 
-def minlip_1_known_n(optimizer,data,n):
- 
-    m, interv, s, b=base_minlip_1_known_n(optimizer,data,n)
+def minlip_1(optimizer,data):
+
+    m, interv, s, b=base_minlip_1(optimizer,data)
+
     # Constraint: time horizon constraint: projects must complete within the scheduling period
     #NOTE: Not needed. Already implicity in interval definition
 
     # Objective
-    # Opposite to MInLiP(1): cost is computed using fixed number of realizations rather than checking interval length
+    # Maximize profit: final inventory value minus total task costs
+    # Task cost is counted only for active realizations (length > 0)
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*m.sum(1 for _ in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
+           - m.sum(data.cost[i,j]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])
+                   for (i, j) in data.I_i_j_prod)
     m.minimize(-profit)
 
     return m, interv, s, b
 
-def minp_2_known_n(optimizer,data,n):
+def minp_2(optimizer,data):
 
-    m, interv, s, b=base_minp_2_known_n(optimizer,data,n)
+    m, interv, s, b=base_minp_2(optimizer,data)
     # Constraint: time horizon constraint: projects must complete within the scheduling period
     #NOTE: Not needed. Already implicity in interval definition
 
     # Objective
-    # Opposite to MInP(2): cost is computed using fixed number of realizations rather than checking interval length
+    # Maximize profit: final inventory value minus total task costs
+    # Task cost is counted only for active realizations (length > 0)
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*m.sum(1 for _ in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
+           - m.sum(data.cost[i,j]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])
+                   for (i, j) in data.I_i_j_prod)
     m.minimize(-profit)
 
     return m, interv, s, b
 
-def minlip_2_known_n(optimizer,data,n):
+def minlip_2(optimizer,data):
 
-    m, interv, s, b=base_minlip_2_known_n(optimizer,data,n)
+    m, interv, s, b=base_minlip_2(optimizer,data)
     # Constraint: time horizon constraint: projects must complete within the scheduling period
     #NOTE: Not needed. Already implicity in interval definition
-    
+
     # Objective
-    # Opposite to MInLiP(2): cost is computed using fixed number of realizations rather than checking interval length
+    # As in MInP(2): maximize profit as final inventory value minus cost of active tasks
     profit = m.sum(data.revenue[k]*s[k,data.lastT] for k in data.K) \
-           - m.sum(data.cost[i,j]*m.sum(1 for _ in data.Q[(i,j)]) for (i, j) in data.I_i_j_prod)
+           - m.sum(data.cost[i,j]*m.sum(m.gt(m.length(interv[i,j,q]),0) for q in data.Q[(i,j)])
+                   for (i, j) in data.I_i_j_prod)
     m.minimize(-profit)
 
     return m, interv, s, b
+
 
 # === Utilities ===
 
@@ -362,7 +372,7 @@ if __name__ == '__main__':
     # ------------------------
     eta_f = 120         # Scheduling horizon (in time units)
     delta_f = 1         # Base time step (in time units)
-    time_limit = 3600    # Time limit for optimization (in seconds)
+    time_limit = 300    # Time limit for optimization (in seconds)
     seed = 1            # Random seed for reproducibility
 
     # ------------------------
@@ -375,31 +385,19 @@ if __name__ == '__main__':
     # Formulation Dictionaries
     # ------------------------
     # Each key corresponds to a formulation variant
-
-    known_n_formulations = {
-        1: mip_known_n,
-        2: minp_1_known_n,
-        3: minlip_1_known_n,
-        4: minp_2_known_n,
-        5: minlip_2_known_n
+    unknown_n_formulations = {
+        1: mip,
+        2: minp_1,
+        3: minlip_1,
+        4: minp_2,
+        5: minlip_2
     }
 
     # ------------------------
     # Result Containers
     # ------------------------
-    known_n_results = {}      # Stores results for known-n formulations
-
-    # Read n_mip
-    input_path = Path("./hexaly_benchmarking_results")
-    df = pd.read_excel(input_path / "mip_n.xlsx")
-    n_mip = {
-        int(row["acc"]): {
-            tuple(col.split("_")): int(row[col]) for col in df.columns if col != "acc"
-        }
-        for _, row in df.iterrows()
-    }
-
-    known_table = {}          # Tabular format for known-n results
+    original_results = {}     # Stores raw results for unknown-n formulations
+    original_table = {}       # Tabular format for unknown-n results
 
     # ------------------------
     # Benchmarking Loop
@@ -408,10 +406,10 @@ if __name__ == '__main__':
 
     for acc in relevant_acc_levels:
         # Run all known-n formulations using extracted n from MIP
-        for key, formulation in known_n_formulations.items():
+        for key, formulation in unknown_n_formulations.items():
             data = Data(eta_f=eta_f, delta_f=delta_f, acc_level=acc)
             with HexalyOptimizer() as optimizer:
-                m, x, s, b = formulation(optimizer, data, n_mip[acc])
+                m, x, s, b = formulation(optimizer, data)
                 m.close()
                 optimizer.param.time_limit = time_limit
                 optimizer.param.seed = seed
@@ -429,10 +427,10 @@ if __name__ == '__main__':
                     status = str(optimizer.solution.status)
 
                     # Store results
-                    known_n_results.setdefault(key, []).append([
+                    original_results.setdefault(key, []).append([
                         acc, objective, objective_bound, objective_gap, comp_time, status
                     ])
-                    known_table.setdefault(acc, {})[key] = [
+                    original_table.setdefault(acc, {})[key] = [
                         objective, objective_bound, objective_gap, comp_time, status
                     ]
 
@@ -441,11 +439,11 @@ if __name__ == '__main__':
         # ------------------------
 
         if solve:
-            flush_table_to_txt("known_n_3600.txt", known_table, list(known_n_formulations.keys()))
+            flush_table_to_txt("unknown_n_300.txt", original_table, list(unknown_n_formulations.keys()))
 
     # ------------------------
     # Save Final Results
     # ------------------------
 
     if solve:
-        write_to_excel("known_n_3600.xlsx", known_n_results)
+        write_to_excel("unknown_n_300.xlsx", original_results)
